@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repd"
+version = "0.1.0"
+description = "Repository Entry Points Defects (REPD) model implementation"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Anirudh Sengar", email = "anirudhsengar3@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "gitpython>=3.1.0",
+    "matplotlib>=3.5.0",
+    "numpy>=1.20.0",
+    "pandas>=1.3.0",
+    "networkx>=2.6.0",  # For dependency graphs and network analysis
+    "scikit-learn>=1.0.0",  # For some machine learning components
+    "pygments>=2.10.0",  # For code parsing
+    "tqdm>=4.62.0",  # For progress bars
+    "rich>=10.0.0",  # For rich console output
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=2.12.0",
+    "black>=22.3.0",
+    "isort>=5.10.0",
+    "flake8>=4.0.0",
+    "mypy>=0.910",
+    "pre-commit>=2.17.0",
+]
+docs = [
+    "sphinx>=4.4.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+
+[project.scripts]
+repd = "repd.cli:main"
+
+[project.urls]
+"Homepage" = "https://github.com/anirudhsengar/REPDPrototype"
+"Bug Tracker" = "https://github.com/anirudhsengar/REPDPrototype/issues"
+
+[tool.setuptools]
+packages = ["repd"]
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.8"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
