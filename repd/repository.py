@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Repository Interface for REPD Model
+Repository Interface Module for REPD Model
 
-This module provides an abstraction layer for interacting with Git repositories,
-allowing the REPD model to extract commits, changes, file contents, and other
-repository information.
+This module provides a unified interface for accessing repositories,
+whether they are local filesystem directories or remote Git repositories.
+It handles operations like retrieving files, commit history, and metadata.
 
 Author: anirudhsengar
 """
@@ -14,659 +14,983 @@ import logging
 import os
 import re
 import shutil
-import subprocess
-from datetime import datetime
+import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Set, Tuple, Optional, Any, Union
 
-import git
-from tqdm import tqdm
-
 logger = logging.getLogger(__name__)
+
+try:
+    import git
+
+    GIT_AVAILABLE = True
+except ImportError:
+    logger.warning("GitPython not installed. Git repository support will be limited.")
+    GIT_AVAILABLE = False
+
+
+class Commit:
+    """Represents a commit in version control history."""
+
+    def __init__(self, hash: str, author: str, date: datetime, message: str,
+                 modified_files: List[str]):
+        """
+        Initialize a commit.
+
+        Args:
+            hash: Commit hash/ID
+            author: Author of the commit
+            date: Date of the commit
+            message: Commit message
+            modified_files: List of files modified in the commit
+        """
+        self.hash = hash
+        self.author = author
+        self.date = date
+        self.message = message
+        self.modified_files = modified_files
+
+    def __str__(self) -> str:
+        """Return string representation of the commit."""
+        date_str = self.date.strftime('%Y-%m-%d %H:%M:%S')
+        return f"Commit {self.hash[:7]} by {self.author} on {date_str}: {self.message[:50]}"
+
+    def __repr__(self) -> str:
+        """Return programmer representation of the commit."""
+        return f"Commit(hash={self.hash[:7]}, author='{self.author}', date='{self.date}')"
 
 
 class Repository:
     """
-    Interface for interacting with Git repositories.
+    Abstract base class representing a code repository.
 
-    This class provides methods for extracting repository information,
-    including commits, changes, file contents, and more. It uses the
-    GitPython library for most operations, with fallbacks to direct
-    git commands when needed for performance.
+    Provides a unified interface for accessing files and commit history
+    regardless of the underlying storage mechanism.
     """
 
-    # Extensions for common code file types
-    CODE_FILE_EXTENSIONS = {
-        # Python
-        ".py", ".pyx", ".pyi", ".pyw",
-        # JavaScript/TypeScript
-        ".js", ".jsx", ".ts", ".tsx",
-        # Java
-        ".java", ".kt", ".scala", ".groovy",
-        # C/C++
-        ".c", ".cpp", ".cc", ".h", ".hpp", ".cxx",
-        # Go
-        ".go",
-        # Ruby
-        ".rb",
-        # PHP
-        ".php",
-        # Rust
-        ".rs",
-        # Swift
-        ".swift",
-        # C#
-        ".cs",
-        # Shell
-        ".sh", ".bash", ".zsh",
-        # Configuration
-        ".json", ".yaml", ".yml", ".toml", ".xml",
-        # Other
-        ".md", ".rst", ".txt"  # Documentation
-    }
-
-    # Files/paths to ignore
-    IGNORE_PATTERNS = [
-        r".git/",
-        r"node_modules/",
-        r"__pycache__/",
-        r"\.venv/",
-        r"venv/",
-        r"\.pytest_cache/",
-        r"\.idea/",
-        r"\.vs/",
-        r"\.vscode/",
-        r"\.github/",
-        r"dist/",
-        r"build/",
-        r"\.DS_Store$",
-        r".*\.min\.js$",
-        r".*\.min\.css$"
-    ]
-
-    def __init__(self, path: str):
+    def __init__(self, name: str):
         """
-        Initialize a repository interface.
+        Initialize the repository.
 
         Args:
-            path: Path to the Git repository
+            name: Repository name
         """
-        self.path = os.path.abspath(path)
+        self.name = name
+        self.path = None
 
-        # Validate repository path
-        if not os.path.isdir(self.path):
-            raise ValueError(f"Repository path does not exist: {self.path}")
-
-        # Check if path is a Git repository
-        if not os.path.isdir(os.path.join(self.path, ".git")):
-            raise ValueError(f"Not a Git repository: {self.path}")
-
-        # Initialize Git repository
-        try:
-            self.repo = git.Repo(self.path)
-            logger.info(f"Initialized repository: {self.path}")
-
-            # Get basic repository information
-            remote_urls = [remote.url for remote in self.repo.remotes]
-            remote_info = ", ".join(remote_urls) if remote_urls else "No remotes configured"
-            logger.debug(f"Repository remotes: {remote_info}")
-
-        except git.InvalidGitRepositoryError:
-            raise ValueError(f"Invalid Git repository: {self.path}")
-        except Exception as e:
-            raise ValueError(f"Error initializing repository: {str(e)}")
-
-        # Compiled ignore patterns
-        self.ignore_patterns = [re.compile(pattern) for pattern in self.IGNORE_PATTERNS]
-
-    def get_commit_history(
-            self,
-            limit: int = 1000,
-            branch: str = "HEAD",
-            skip_merges: bool = True
-    ) -> List[Dict[str, Any]]:
+    def get_name(self) -> str:
         """
-        Get commit history from the repository.
-
-        Args:
-            limit: Maximum number of commits to retrieve
-            branch: Branch name or reference to retrieve commits from
-            skip_merges: Whether to skip merge commits
+        Get repository name.
 
         Returns:
-            List of commit dictionaries with metadata and changed files
+            Repository name
         """
-        logger.debug(f"Retrieving commit history (limit: {limit}, branch: {branch})")
+        return self.name
 
-        # Get commits using GitPython
-        try:
-            # Create iterator for commits
-            commits_iter = self.repo.iter_commits(branch, max_count=limit)
-
-            # Process each commit
-            commits = []
-            for commit in tqdm(commits_iter, desc="Loading commits", total=min(limit, 1000), unit="commit"):
-                # Skip merge commits if requested
-                if skip_merges and len(commit.parents) > 1:
-                    continue
-
-                # Extract basic commit information
-                commit_data = {
-                    "hash": commit.hexsha,
-                    "short_hash": commit.hexsha[:7],
-                    "author": commit.author.email,
-                    "author_name": commit.author.name,
-                    "message": commit.message.strip(),
-                    "timestamp": datetime.fromtimestamp(commit.committed_date),
-                    "is_merge": len(commit.parents) > 1,
-                    "files": []
-                }
-
-                # Get changed files using git diff-tree directly for better performance
-                # This is much faster than using commit.stats for large repositories
-                try:
-                    if len(commit.parents) > 0:
-                        parent = commit.parents[0]
-                        diff_index = parent.diff(commit)
-
-                        # Extract changed files
-                        for diff in diff_index:
-                            path = diff.a_path if diff.a_path else diff.b_path
-
-                            # Skip ignored paths
-                            if self._should_ignore_path(path):
-                                continue
-
-                            commit_data["files"].append(path)
-                    else:
-                        # For first commit, get all files
-                        for item in commit.tree.traverse():
-                            if item.type == "blob":  # Only include files, not directories
-                                path = item.path
-
-                                # Skip ignored paths
-                                if self._should_ignore_path(path):
-                                    continue
-
-                                commit_data["files"].append(path)
-
-                except Exception as e:
-                    logger.warning(f"Error getting files for commit {commit.hexsha}: {str(e)}")
-
-                commits.append(commit_data)
-
-            logger.debug(f"Retrieved {len(commits)} commits")
-            return commits
-
-        except Exception as e:
-            logger.error(f"Error retrieving commit history: {str(e)}")
-            return []
-
-    def get_file_at_commit(
-            self,
-            filename: str,
-            commit_hash: str = "HEAD"
-    ) -> Optional[str]:
+    def get_all_files(self) -> List[str]:
         """
-        Get file content at a specific commit.
-
-        Args:
-            filename: Path to the file relative to repository root
-            commit_hash: Commit hash or reference
+        Get all files in the repository.
 
         Returns:
-            File content as string or None if file doesn't exist
+            List of file paths
         """
-        try:
-            # Normalize filename to repository path format
-            filename = self.normalize_path(filename)
+        raise NotImplementedError("Subclasses must implement get_all_files")
 
-            # Get the commit object
-            commit = self.repo.commit(commit_hash)
-
-            # Get the blob object for the file
-            try:
-                blob = commit.tree / filename
-                return blob.data_stream.read().decode('utf-8', errors='replace')
-            except KeyError:
-                # File doesn't exist in this commit
-                return None
-
-        except Exception as e:
-            logger.warning(f"Error getting file {filename} at {commit_hash}: {str(e)}")
-            return None
-
-    def get_file_content(self, filename: str) -> Optional[str]:
+    def file_exists(self, file_path: str) -> bool:
         """
-        Get content of a file in the repository.
+        Check if a file exists in the repository.
 
         Args:
-            filename: Path to the file relative to repository root
+            file_path: Path to the file
 
         Returns:
-            File content as string or None if file doesn't exist
+            True if the file exists, False otherwise
         """
-        # Normalize filename to repository path format
-        filename = self.normalize_path(filename)
+        raise NotImplementedError("Subclasses must implement file_exists")
 
-        # Construct absolute path
-        abs_path = os.path.join(self.path, filename)
-
-        # Check if file exists
-        if not os.path.isfile(abs_path):
-            return None
-
-        # Read file content
-        try:
-            with open(abs_path, 'r', encoding='utf-8', errors='replace') as f:
-                return f.read()
-        except Exception as e:
-            logger.warning(f"Error reading file {filename}: {str(e)}")
-            return None
-
-    def normalize_path(self, path: str) -> str:
+    def get_file_content(self, file_path: str) -> Optional[str]:
         """
-        Normalize a path to repository format.
+        Get the content of a file.
 
         Args:
-            path: File path to normalize
+            file_path: Path to the file
+
+        Returns:
+            File content as a string, or None if the file doesn't exist
+        """
+        raise NotImplementedError("Subclasses must implement get_file_content")
+
+    def get_file_size(self, file_path: str) -> int:
+        """
+        Get the size of a file in bytes.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File size in bytes, or 0 if the file doesn't exist
+        """
+        raise NotImplementedError("Subclasses must implement get_file_size")
+
+    def get_file_creation_date(self, file_path: str) -> datetime:
+        """
+        Get the creation date of a file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File creation date
+
+        Raises:
+            Exception: If the file doesn't exist
+        """
+        raise NotImplementedError("Subclasses must implement get_file_creation_date")
+
+    def get_commit_history(self, days: int = None, author: str = None,
+                           file_path: str = None) -> List[Commit]:
+        """
+        Get the commit history of the repository.
+
+        Args:
+            days: Number of days to include (None for all history)
+            author: Filter by commit author (None for all authors)
+            file_path: Filter by file path (None for all files)
+
+        Returns:
+            List of Commit objects
+        """
+        raise NotImplementedError("Subclasses must implement get_commit_history")
+
+    def list_directory(self, directory_path: str) -> List[str]:
+        """
+        List files and directories in a directory.
+
+        Args:
+            directory_path: Path to the directory
+
+        Returns:
+            List of file and directory names
+        """
+        raise NotImplementedError("Subclasses must implement list_directory")
+
+    def get_file_attributes(self, file_path: str) -> Dict[str, Any]:
+        """
+        Get attributes of a file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Dictionary of file attributes
+
+        Raises:
+            Exception: If the file doesn't exist
+        """
+        raise NotImplementedError("Subclasses must implement get_file_attributes")
+
+    def is_code_file(self, file_path: str) -> bool:
+        """
+        Check if a file is a code file based on its extension.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            True if the file is a code file, False otherwise
+        """
+        # Common code file extensions
+        code_extensions = {
+            # Python
+            '.py', '.pyx', '.pyi',
+            # JavaScript
+            '.js', '.jsx', '.ts', '.tsx',
+            # Web
+            '.html', '.htm', '.css', '.scss', '.sass', '.less',
+            # Java
+            '.java', '.kt', '.groovy',
+            # C/C++
+            '.c', '.cpp', '.cc', '.h', '.hpp', '.cxx',
+            # C#
+            '.cs',
+            # Go
+            '.go',
+            # Ruby
+            '.rb',
+            # PHP
+            '.php',
+            # Shell
+            '.sh', '.bash',
+            # Swift
+            '.swift',
+            # Rust
+            '.rs',
+            # Other
+            '.pl', '.pm', '.scala', '.clj', '.lua', '.hs'
+        }
+
+        # Get file extension
+        _, ext = os.path.splitext(file_path.lower())
+
+        return ext in code_extensions
+
+    def normalize_path(self, file_path: str) -> str:
+        """
+        Normalize a file path for consistent handling.
+
+        Args:
+            file_path: Path to normalize
 
         Returns:
             Normalized path
         """
         # Replace backslashes with forward slashes
-        normalized = path.replace('\\', '/')
+        normalized = file_path.replace('\\', '/')
 
-        # Remove leading slashes and repo directory prefix
-        repo_dir = os.path.basename(self.path)
-        patterns = [
-            f"^/+",  # Leading slashes
-            f"^{re.escape(repo_dir)}/+"  # Repository name prefix
-        ]
+        # Remove leading slashes
+        while normalized.startswith('/'):
+            normalized = normalized[1:]
 
-        for pattern in patterns:
-            normalized = re.sub(pattern, '', normalized)
+        # Remove drive letter for Windows paths
+        if re.match(r'^[a-zA-Z]:', normalized):
+            normalized = normalized[2:]
+
+        # Remove leading ./ and ../
+        normalized = re.sub(r'^(?:\./|\.\.\/)+', '', normalized)
 
         return normalized
 
-    def get_file_history(
-            self,
-            filename: str,
-            limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    def calculate_complexity(self, content: str) -> float:
         """
-        Get the commit history for a specific file.
+        Calculate code complexity from file content.
 
         Args:
-            filename: Path to the file relative to repository root
-            limit: Maximum number of commits to retrieve
+            content: File content
 
         Returns:
-            List of commit dictionaries for the file
+            Complexity score
         """
-        # Normalize filename to repository path format
-        filename = self.normalize_path(filename)
+        if not content:
+            return 0.0
 
-        try:
-            # Use git log command directly for better performance
-            cmd = [
-                "git", "-C", self.path,
-                "log", "--follow", f"-{limit}", "--name-status",
-                "--pretty=format:%H|%an|%ae|%at|%s",
-                "--", filename
-            ]
+        # Simple cyclomatic complexity estimate
+        # Count branch points: if, else, for, while, etc.
+        branch_keywords = [
+            r'\bif\b', r'\belse\b', r'\bfor\b', r'\bwhile\b', r'\bcase\b',
+            r'\bcatch\b', r'\b(?:&&|\|\|)\b', r'\?', r'\bswitch\b'
+        ]
 
-            output = subprocess.check_output(cmd, universal_newlines=True)
+        # Count matches for each keyword
+        complexity = 1  # Base complexity is 1
 
-            # Parse output
-            commits = []
-            commit_data = None
+        for keyword in branch_keywords:
+            matches = re.findall(keyword, content)
+            complexity += len(matches)
 
-            for line in output.split('\n'):
-                line = line.strip()
-                if not line:
-                    continue
+        # Calculate nesting depth
+        lines = content.split('\n')
+        max_indent = 0
+        for line in lines:
+            # Count leading spaces/tabs and divide by typical indentation (4)
+            indent = len(line) - len(line.lstrip())
+            indent_level = indent / 4
+            max_indent = max(max_indent, indent_level)
 
-                # Check if this is a commit line
-                if '|' in line:
-                    # If we already have commit data, add it to commits
-                    if commit_data:
-                        commits.append(commit_data)
+        # Factor in nesting depth
+        complexity += max_indent * 0.5
 
-                    # Parse commit data
-                    parts = line.split('|')
-                    if len(parts) >= 5:
-                        commit_hash, author_name, author_email, timestamp, message = parts[0:5]
+        # Normalize complexity score to a reasonable range
+        normalized = min(1.0, complexity / 50)
 
-                        commit_data = {
-                            "hash": commit_hash,
-                            "short_hash": commit_hash[:7],
-                            "author": author_email,
-                            "author_name": author_name,
-                            "message": message,
-                            "timestamp": datetime.fromtimestamp(int(timestamp)),
-                            "file": filename,
-                            "change_type": ""
-                        }
+        return normalized
 
-                # Check if this is a file status line
-                elif commit_data and line[0] in ['M', 'A', 'D', 'R']:
-                    change_type = {
-                        'M': 'modified',
-                        'A': 'added',
-                        'D': 'deleted',
-                        'R': 'renamed'
-                    }.get(line[0], 'unknown')
 
-                    commit_data["change_type"] = change_type
+class LocalRepository(Repository):
+    """Repository implementation for local filesystems."""
 
-            # Add the last commit data if exists
-            if commit_data:
-                commits.append(commit_data)
-
-            return commits
-
-        except Exception as e:
-            logger.warning(f"Error getting history for file {filename}: {str(e)}")
-            return []
-
-    def get_file_blame(self, filename: str) -> List[Dict[str, Any]]:
+    def __init__(self, path: Union[str, Path]):
         """
-        Get blame information for a file.
+        Initialize the repository.
 
         Args:
-            filename: Path to the file relative to repository root
-
-        Returns:
-            List of dictionaries with line-by-line blame information
+            path: Path to the local repository
         """
-        # Normalize filename to repository path format
-        filename = self.normalize_path(filename)
-
-        try:
-            # Get blame information
-            blame_data = []
-
-            # Use git blame command directly
-            cmd = [
-                "git", "-C", self.path,
-                "blame", "-p", "--", filename
-            ]
-
-            output = subprocess.check_output(cmd, universal_newlines=True)
-
-            # Parse output
-            current_commit = None
-            current_line = None
-
-            for line in output.split('\n'):
-                # Skip empty lines
-                if not line:
-                    continue
-
-                # Commit header line
-                if line.startswith('^') or re.match(r'^[0-9a-f]{40}', line):
-                    parts = line.split()
-                    commit_hash = parts[0].lstrip('^')
-                    line_num = int(parts[2])
-
-                    current_commit = {
-                        "hash": commit_hash,
-                        "short_hash": commit_hash[:7],
-                        "line_num": line_num,
-                        "author": "",
-                        "author_name": "",
-                        "timestamp": None,
-                        "line_content": ""
-                    }
-
-                # Author line
-                elif line.startswith('author '):
-                    if current_commit:
-                        current_commit["author_name"] = line[7:]
-
-                # Author email line
-                elif line.startswith('author-mail '):
-                    if current_commit:
-                        current_commit["author"] = line[13:].strip('<>')
-
-                # Author time line
-                elif line.startswith('author-time '):
-                    if current_commit:
-                        timestamp = int(line[12:])
-                        current_commit["timestamp"] = datetime.fromtimestamp(timestamp)
-
-                # Line content
-                elif line.startswith('\t'):
-                    if current_commit:
-                        current_commit["line_content"] = line[1:]  # Remove tab character
-                        blame_data.append(current_commit.copy())
-
-            return blame_data
-
-        except Exception as e:
-            logger.warning(f"Error getting blame for file {filename}: {str(e)}")
-            return []
+        self.path = Path(path)
+        super().__init__(self.path.name)
+        logger.info(f"Initialized local repository at {self.path}")
 
     def get_all_files(self) -> List[str]:
         """
-        Get list of all files in the repository.
+        Get all files in the repository.
 
         Returns:
-            List of file paths relative to repository root
+            List of file paths
         """
         all_files = []
 
-        # Walk through repository directory
-        for root, dirs, files in os.walk(self.path):
-            # Skip ignored directories
-            dirs[:] = [d for d in dirs if not self._should_ignore_path(os.path.join(root, d))]
-
-            # Process files
+        for root, _, files in os.walk(self.path):
             for file in files:
-                file_path = os.path.join(root, file)
-                rel_path = os.path.relpath(file_path, self.path)
+                # Get full path
+                full_path = os.path.join(root, file)
 
-                # Convert to standard repository format
-                rel_path = self.normalize_path(rel_path)
+                # Convert to relative path
+                rel_path = os.path.relpath(full_path, self.path)
 
-                # Skip ignored files
-                if self._should_ignore_path(rel_path):
-                    continue
+                # Normalize path
+                normalized = self.normalize_path(rel_path)
 
-                all_files.append(rel_path)
+                all_files.append(normalized)
 
         return all_files
 
-    def is_code_file(self, filename: str) -> bool:
-        """
-        Check if a file is a code file.
-
-        Args:
-            filename: Path to the file
-
-        Returns:
-            True if file is a code file, False otherwise
-        """
-        # Get file extension
-        _, extension = os.path.splitext(filename.lower())
-
-        # Check if extension is in code file extensions
-        return extension in self.CODE_FILE_EXTENSIONS
-
-    def file_exists(self, filename: str) -> bool:
+    def file_exists(self, file_path: str) -> bool:
         """
         Check if a file exists in the repository.
 
         Args:
-            filename: Path to the file relative to repository root
+            file_path: Path to the file
 
         Returns:
-            True if file exists, False otherwise
+            True if the file exists, False otherwise
         """
-        # Normalize filename to repository path format
-        filename = self.normalize_path(filename)
+        # Normalize path
+        normalized = self.normalize_path(file_path)
 
         # Check if file exists
-        file_path = os.path.join(self.path, filename)
-        return os.path.isfile(file_path)
+        full_path = self.path / normalized
+        return full_path.is_file()
 
-    def get_file_size(self, filename: str) -> int:
+    def get_file_content(self, file_path: str) -> Optional[str]:
         """
-        Get size of a file in bytes.
+        Get the content of a file.
 
         Args:
-            filename: Path to the file relative to repository root
+            file_path: Path to the file
 
         Returns:
-            File size in bytes or 0 if file doesn't exist
+            File content as a string, or None if the file doesn't exist
         """
-        # Normalize filename to repository path format
-        filename = self.normalize_path(filename)
+        # Normalize path
+        normalized = self.normalize_path(file_path)
 
-        # Get file size
-        file_path = os.path.join(self.path, filename)
-        if os.path.isfile(file_path):
-            return os.path.getsize(file_path)
-        else:
-            return 0
+        # Get full path
+        full_path = self.path / normalized
 
-    def _should_ignore_path(self, path: str) -> bool:
-        """
-        Check if a path should be ignored based on ignore patterns.
+        # Check if file exists
+        if not full_path.is_file():
+            return None
 
-        Args:
-            path: Path to check
-
-        Returns:
-            True if path should be ignored, False otherwise
-        """
-        # Normalize path for consistency
-        norm_path = path.replace('\\', '/')
-
-        # Check against ignore patterns
-        for pattern in self.ignore_patterns:
-            if pattern.search(norm_path):
-                return True
-
-        return False
-
-    def get_commit_stats(self, weeks: int = 52) -> Dict[str, Any]:
-        """
-        Get repository statistics for a time period.
-
-        Args:
-            weeks: Number of weeks to analyze
-
-        Returns:
-            Dictionary with repository statistics
-        """
+        # Try to read file content
         try:
-            # Use git shortlog and git log commands
-            shortlog_cmd = [
-                "git", "-C", self.path,
-                "shortlog", "-s", "-n", "--all", "--no-merges"
-            ]
+            # Check if file is binary
+            if self._is_binary_file(full_path):
+                return None
 
-            activity_cmd = [
-                "git", "-C", self.path,
-                "log", "--all", "--format=format:%at", "--since", f"{weeks} weeks ago"
-            ]
-
-            # Get contributor statistics
-            shortlog_output = subprocess.check_output(shortlog_cmd, universal_newlines=True)
-
-            contributors = []
-            total_commits = 0
-
-            for line in shortlog_output.strip().split('\n'):
-                if not line.strip():
-                    continue
-
-                parts = line.strip().split('\t')
-                if len(parts) >= 2:
-                    commit_count = int(parts[0].strip())
-                    author = parts[1].strip()
-
-                    contributors.append({
-                        "name": author,
-                        "commits": commit_count
-                    })
-                    total_commits += commit_count
-
-            # Get activity data (timestamp of each commit)
-            activity_output = subprocess.check_output(activity_cmd, universal_newlines=True)
-            timestamps = [int(ts) for ts in activity_output.strip().split('\n') if ts.strip()]
-
-            # Group by week
-            weekly_activity = [0] * weeks
-            if timestamps:
-                # Find the most recent timestamp
-                max_ts = max(timestamps)
-
-                # Calculate week number for each timestamp
-                for ts in timestamps:
-                    # Calculate weeks ago (0 = current week)
-                    weeks_ago = int((max_ts - ts) / (7 * 24 * 3600))
-
-                    # Increment the appropriate week bucket
-                    if 0 <= weeks_ago < weeks:
-                        weekly_activity[weeks_ago] += 1
-
-            # Compile statistics
-            stats = {
-                "total_commits": total_commits,
-                "total_contributors": len(contributors),
-                "top_contributors": contributors[:10],
-                "weekly_activity": list(reversed(weekly_activity)),  # Oldest to newest
-                "weeks_analyzed": weeks
-            }
-
-            return stats
+            # Read file content
+            return full_path.read_text(errors='replace')
 
         except Exception as e:
-            logger.warning(f"Error getting repository statistics: {str(e)}")
-            return {}
+            logger.warning(f"Error reading file {file_path}: {str(e)}")
+            return None
+
+    def get_file_size(self, file_path: str) -> int:
+        """
+        Get the size of a file in bytes.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File size in bytes, or 0 if the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            return 0
+
+        # Get file size
+        return full_path.stat().st_size
+
+    def get_file_creation_date(self, file_path: str) -> datetime:
+        """
+        Get the creation date of a file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File creation date
+
+        Raises:
+            Exception: If the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Get file stats
+        stats = full_path.stat()
+
+        # Use ctime as creation date (best approximation available)
+        return datetime.fromtimestamp(stats.st_ctime)
+
+    def get_commit_history(self, days: int = None, author: str = None,
+                           file_path: str = None) -> List[Commit]:
+        """
+        Get the commit history of the repository.
+
+        Note: For local repositories without Git, this returns an empty list.
+        To get commit history, use GitRepository instead.
+
+        Args:
+            days: Number of days to include (None for all history)
+            author: Filter by commit author (None for all authors)
+            file_path: Filter by file path (None for all files)
+
+        Returns:
+            List of Commit objects
+        """
+        # Local repositories don't have commit history without Git
+        logger.warning("Local repositories don't have commit history. Use GitRepository instead.")
+        return []
+
+    def list_directory(self, directory_path: str) -> List[str]:
+        """
+        List files and directories in a directory.
+
+        Args:
+            directory_path: Path to the directory
+
+        Returns:
+            List of file and directory names
+        """
+        # Normalize path
+        normalized = self.normalize_path(directory_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if directory exists
+        if not full_path.is_dir():
+            return []
+
+        # List files and directories
+        return [item.name for item in full_path.iterdir()]
+
+    def get_file_attributes(self, file_path: str) -> Dict[str, Any]:
+        """
+        Get attributes of a file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Dictionary of file attributes
+
+        Raises:
+            Exception: If the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Get file stats
+        stats = full_path.stat()
+
+        # Determine if file is binary
+        is_binary = self._is_binary_file(full_path)
+
+        return {
+            "name": os.path.basename(file_path),
+            "size": stats.st_size,
+            "creation_date": datetime.fromtimestamp(stats.st_ctime),
+            "modification_date": datetime.fromtimestamp(stats.st_mtime),
+            "is_binary": is_binary
+        }
+
+    def _is_binary_file(self, file_path: Union[str, Path]) -> bool:
+        """
+        Check if a file is binary.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            True if the file is binary, False otherwise
+        """
+        try:
+            # Read first 1024 bytes
+            with open(file_path, 'rb') as f:
+                chunk = f.read(1024)
+
+            # Check for null bytes (common in binary files)
+            if b'\0' in chunk:
+                return True
+
+            # Try to decode as UTF-8
+            chunk.decode('utf-8')
+            return False
+
+        except UnicodeDecodeError:
+            # If decoding fails, it's probably binary
+            return True
+        except:
+            # If any other error occurs, assume binary to be safe
+            return True
 
 
-if __name__ == "__main__":
-    # Example usage
-    import sys
+class GitRepository(Repository):
+    """Repository implementation for Git repositories."""
 
-    # Configure logging
-    logging.basicConfig(level=logging.INFO)
+    def __init__(self, url: str, clone_path: str = None):
+        """
+        Initialize the repository.
 
-    if len(sys.argv) < 2:
-        print("Usage: python repository.py /path/to/repository")
-        sys.exit(1)
+        Args:
+            url: URL of the Git repository
+            clone_path: Path to clone the repository to (None for temporary directory)
+        """
+        if not GIT_AVAILABLE:
+            raise ImportError("GitPython not installed. Cannot use GitRepository.")
 
-    # Initialize repository
-    repo_path = sys.argv[1]
-    repository = Repository(repo_path)
+        self.url = url
 
-    # Get and print repository information
-    print(f"Repository: {repository.path}")
+        # Extract repository name from URL
+        self.name = os.path.splitext(os.path.basename(url))[0]
 
-    # Get all files
-    files = repository.get_all_files()
-    print(f"Total files: {len(files)}")
-    print("Sample files:")
-    for file in files[:5]:
-        print(f" - {file}")
+        # Clone the repository
+        if clone_path:
+            self.path = Path(clone_path)
+            self._clone_repository(self.path)
+        else:
+            # Create temporary directory
+            self.temp_dir = tempfile.TemporaryDirectory()
+            self.path = Path(self.temp_dir.name)
+            self._clone_repository(self.path)
 
-    # Get commit history
-    commits = repository.get_commit_history(limit=10)
-    print("\nRecent commits:")
-    for commit in commits:
-        print(f" - {commit['short_hash']} | {commit['author']} | {commit['timestamp']} | {commit['message'][:50]}")
+        logger.info(f"Initialized Git repository from {url} at {self.path}")
 
-    # Get repository statistics
-    stats = repository.get_commit_stats(weeks=4)
-    print(f"\nTotal commits: {stats.get('total_commits', 'N/A')}")
-    print(f"Total contributors: {stats.get('total_contributors', 'N/A')}")
+    def _clone_repository(self, path: Path) -> None:
+        """
+        Clone the Git repository.
 
-    # Print weekly activity
-    print("\nActivity (last 4 weeks, oldest to newest):")
-    weekly = stats.get('weekly_activity', [])
-    for i, commits in enumerate(weekly):
-        print(f" - Week {i + 1}: {commits} commits")
+        Args:
+            path: Path to clone the repository to
+        """
+        logger.info(f"Cloning repository {self.url} to {path}")
+
+        try:
+            # Clone repository
+            self.git_repo = git.Repo.clone_from(self.url, path)
+
+        except git.GitCommandError as e:
+            logger.error(f"Error cloning repository: {str(e)}")
+            raise
+
+    def get_all_files(self) -> List[str]:
+        """
+        Get all files in the repository.
+
+        Returns:
+            List of file paths
+        """
+        all_files = []
+
+        for root, _, files in os.walk(self.path):
+            for file in files:
+                # Skip Git internal files
+                if '.git' in root:
+                    continue
+
+                # Get full path
+                full_path = os.path.join(root, file)
+
+                # Convert to relative path
+                rel_path = os.path.relpath(full_path, self.path)
+
+                # Normalize path
+                normalized = self.normalize_path(rel_path)
+
+                all_files.append(normalized)
+
+        return all_files
+
+    def file_exists(self, file_path: str) -> bool:
+        """
+        Check if a file exists in the repository.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            True if the file exists, False otherwise
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Check if file exists
+        full_path = self.path / normalized
+        return full_path.is_file()
+
+    def get_file_content(self, file_path: str) -> Optional[str]:
+        """
+        Get the content of a file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File content as a string, or None if the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            return None
+
+        # Try to read file content
+        try:
+            # Check if file is binary
+            if self._is_binary_file(full_path):
+                return None
+
+            # Read file content
+            return full_path.read_text(errors='replace')
+
+        except Exception as e:
+            logger.warning(f"Error reading file {file_path}: {str(e)}")
+            return None
+
+    def get_file_size(self, file_path: str) -> int:
+        """
+        Get the size of a file in bytes.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File size in bytes, or 0 if the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            return 0
+
+        # Get file size
+        return full_path.stat().st_size
+
+    def get_file_creation_date(self, file_path: str) -> datetime:
+        """
+        Get the creation date of a file.
+
+        For Git repositories, this returns the date of the first commit
+        that introduced the file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            File creation date
+
+        Raises:
+            Exception: If the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        try:
+            # Get file history
+            history = self.get_file_history(normalized)
+
+            if history:
+                # Return date of the earliest commit
+                return history[-1].date
+
+            # If no history is found, fall back to file stats
+            stats = full_path.stat()
+            return datetime.fromtimestamp(stats.st_ctime)
+
+        except Exception as e:
+            logger.warning(f"Error getting creation date for {file_path}: {str(e)}")
+
+            # Fall back to file stats
+            stats = full_path.stat()
+            return datetime.fromtimestamp(stats.st_ctime)
+
+    def get_commit_history(self, days: int = None, author: str = None,
+                           file_path: str = None) -> List[Commit]:
+        """
+        Get the commit history of the repository.
+
+        Args:
+            days: Number of days to include (None for all history)
+            author: Filter by commit author (None for all authors)
+            file_path: Filter by file path (None for all files)
+
+        Returns:
+            List of Commit objects
+        """
+        try:
+            # Get cutoff date if days specified
+            if days:
+                cutoff_date = datetime.now() - timedelta(days=days)
+            else:
+                cutoff_date = None
+
+            # Get all commits
+            git_commits = list(self.git_repo.iter_commits())
+
+            # Convert to Commit objects
+            commits = []
+
+            for git_commit in git_commits:
+                # Extract commit date
+                commit_date = datetime.fromtimestamp(git_commit.committed_date)
+
+                # Apply date filter
+                if cutoff_date and commit_date < cutoff_date:
+                    continue
+
+                # Apply author filter
+                if author and git_commit.author.name != author:
+                    continue
+
+                # Extract modified files
+                modified_files = list(git_commit.stats.files.keys())
+
+                # Apply file filter
+                if file_path and file_path not in modified_files:
+                    continue
+
+                # Create Commit object
+                commit = Commit(
+                    hash=git_commit.hexsha,
+                    author=git_commit.author.name,
+                    date=commit_date,
+                    message=git_commit.message,
+                    modified_files=modified_files
+                )
+
+                commits.append(commit)
+
+            return commits
+
+        except Exception as e:
+            logger.error(f"Error getting commit history: {str(e)}")
+            return []
+
+    def list_directory(self, directory_path: str) -> List[str]:
+        """
+        List files and directories in a directory.
+
+        Args:
+            directory_path: Path to the directory
+
+        Returns:
+            List of file and directory names
+        """
+        # Normalize path
+        normalized = self.normalize_path(directory_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if directory exists
+        if not full_path.is_dir():
+            return []
+
+        # List files and directories
+        return [item.name for item in full_path.iterdir()]
+
+    def get_file_attributes(self, file_path: str) -> Dict[str, Any]:
+        """
+        Get attributes of a file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Dictionary of file attributes
+
+        Raises:
+            Exception: If the file doesn't exist
+        """
+        # Normalize path
+        normalized = self.normalize_path(file_path)
+
+        # Get full path
+        full_path = self.path / normalized
+
+        # Check if file exists
+        if not full_path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Get file stats
+        stats = full_path.stat()
+
+        # Determine if file is binary
+        is_binary = self._is_binary_file(full_path)
+
+        # Get creation date
+        try:
+            creation_date = self.get_file_creation_date(file_path)
+        except:
+            # Fall back to file stats
+            creation_date = datetime.fromtimestamp(stats.st_ctime)
+
+        return {
+            "name": os.path.basename(file_path),
+            "size": stats.st_size,
+            "creation_date": creation_date,
+            "modification_date": datetime.fromtimestamp(stats.st_mtime),
+            "is_binary": is_binary,
+            "commit_count": len(self.get_file_history(file_path))
+        }
+
+    def get_contributors(self) -> List[str]:
+        """
+        Get contributors to the repository.
+
+        Returns:
+            List of contributor names
+        """
+        try:
+            # Get all commits
+            git_commits = list(self.git_repo.iter_commits())
+
+            # Extract unique authors
+            contributors = set()
+
+            for git_commit in git_commits:
+                contributors.add(git_commit.author.name)
+
+            return sorted(contributors)
+
+        except Exception as e:
+            logger.error(f"Error getting contributors: {str(e)}")
+            return []
+
+    def get_file_history(self, file_path: str) -> List[Commit]:
+        """
+        Get the commit history for a specific file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            List of Commit objects
+        """
+        return self.get_commit_history(file_path=file_path)
+
+    def get_commit_stats(self, days: int = None) -> Dict[str, int]:
+        """
+        Get statistics about commits.
+
+        Args:
+            days: Number of days to include (None for all history)
+
+        Returns:
+            Dictionary with statistics
+        """
+        try:
+            # Get commit history
+            commits = self.get_commit_history(days=days)
+
+            # Count total files changed
+            all_changed_files = set()
+            total_insertions = 0
+            total_deletions = 0
+
+            for commit in commits:
+                all_changed_files.update(commit.modified_files)
+
+                # Try to get detailed stats (if available)
+                try:
+                    git_commit = self.git_repo.commit(commit.hash)
+                    for _, stats in git_commit.stats.files.items():
+                        total_insertions += stats.get('insertions', 0)
+                        total_deletions += stats.get('deletions', 0)
+                except:
+                    pass
+
+            return {
+                "total_commits": len(commits),
+                "total_files_changed": len(all_changed_files),
+                "total_insertions": total_insertions,
+                "total_deletions": total_deletions,
+                "total_contributors": len(self.get_contributors())
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting commit stats: {str(e)}")
+            return {
+                "total_commits": 0,
+                "total_files_changed": 0,
+                "total_insertions": 0,
+                "total_deletions": 0,
+                "total_contributors": 0
+            }
+
+    def _is_binary_file(self, file_path: Union[str, Path]) -> bool:
+        """
+        Check if a file is binary.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            True if the file is binary, False otherwise
+        """
+        try:
+            # Read first 1024 bytes
+            with open(file_path, 'rb') as f:
+                chunk = f.read(1024)
+
+            # Check for null bytes (common in binary files)
+            if b'\0' in chunk:
+                return True
+
+            # Try to decode as UTF-8
+            chunk.decode('utf-8')
+            return False
+
+        except UnicodeDecodeError:
+            # If decoding fails, it's probably binary
+            return True
+        except:
+            # If any other error occurs, assume binary to be safe
+            return True

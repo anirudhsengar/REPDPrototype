@@ -3,57 +3,42 @@
 """
 Visualization Module for REPD Model
 
-This module provides visualization functionality for REPD analysis results,
-including risk score visualizations, change coupling networks, entry point
-maps, and developer activity patterns.
+This module contains functions for visualizing repository analysis results,
+including risk scores, dependency networks, change coupling, and developer
+activity patterns.
 
 Author: anirudhsengar
-Date: 2025-03-26 06:37:46
 """
 
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional, Any, Callable, Union
+from typing import Dict, List, Set, Tuple, Optional, Any, Union
 
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+import networkx as nx
 import numpy as np
 import seaborn as sns
-from matplotlib.ticker import MaxNLocator
-import networkx as nx
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
+from matplotlib.dates import DateFormatter
+import matplotlib.dates as mdates
+import matplotlib.cm as cm
+import squarify  # For treemap visualization
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 
-def visualize_results(
-        results: Dict[str, Any],
-        output_dir: Union[str, Path],
-        viz_types: List[str] = None,
-        file_format: str = "png",
-        max_items: int = 20,
-        figsize: Tuple[int, int] = (10, 8),
-        dpi: int = 300,
-        cmap: str = "viridis",
-        progress_callback: Callable = None
-) -> Dict[str, str]:
+def visualize_results(results: Dict, output_dir: Path,
+                      viz_types: List[str] = None) -> Dict[str, str]:
     """
-    Generate visualizations from REPD analysis results.
+    Visualize repository analysis results.
 
     Args:
-        results: Dictionary with REPD analysis results
+        results: Analysis results dictionary
         output_dir: Directory to save visualizations
         viz_types: List of visualization types to generate
-                   (options: risk, coupling, entry_points, network, activity, treemap, heatmap)
-        file_format: Output file format (png, pdf, svg)
-        max_items: Maximum number of items to include in visualizations
-        figsize: Figure size as (width, height) tuple
-        dpi: DPI for output files
-        cmap: Colormap name for visualizations
-        progress_callback: Optional callback function to report progress
+                  (defaults to all available types)
 
     Returns:
         Dictionary mapping visualization types to output file paths
@@ -61,968 +46,791 @@ def visualize_results(
     logger.info(f"Generating visualizations in {output_dir}")
 
     # Create output directory if it doesn't exist
-    if isinstance(output_dir, str):
-        output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Default visualization types
-    if viz_types is None:
-        viz_types = ["risk", "coupling", "entry_points", "network", "activity"]
+    all_viz_types = [
+        "risk",
+        "coupling",
+        "dependency",
+        "activity",
+        "risk_treemap",
+        "risk_heatmap"
+    ]
 
-    # Set default style
-    plt.style.use("seaborn-v0_8-darkgrid")
+    # Use specified visualization types or all available types
+    viz_types = viz_types or all_viz_types
 
-    # Validation
-    if "risk_scores" not in results:
-        logger.warning("No risk scores found in results, some visualizations may be skipped")
-
-    # Track output files
+    # Output file paths
     output_files = {}
 
-    # Generate visualizations
+    # Generate each requested visualization type
     for viz_type in viz_types:
         try:
-            if viz_type == "risk":
-                output_file = _visualize_risk_scores(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
+            if viz_type == "risk" and "risk_scores" in results:
+                output_file = output_dir / "risk_scores.png"
+                _visualize_risk_scores(results["risk_scores"], output_file)
+                output_files["risk"] = str(output_file)
 
-            elif viz_type == "coupling":
-                output_file = _visualize_change_coupling(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
+            elif viz_type == "coupling" and "coupling_matrix" in results:
+                output_file = output_dir / "change_coupling_network.png"
+                _visualize_coupling_network(results["coupling_matrix"], output_file)
+                output_files["coupling"] = str(output_file)
 
-            elif viz_type == "entry_points":
-                output_file = _visualize_entry_points(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
+            elif viz_type == "dependency" and "dependency_graph" in results:
+                output_file = output_dir / "dependency_network.png"
+                _visualize_dependency_network(results["dependency_graph"], output_file)
+                output_files["dependency"] = str(output_file)
 
-            elif viz_type == "network":
-                output_file = _visualize_dependency_network(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
+            elif viz_type == "activity" and "commit_history" in results:
+                output_file = output_dir / "developer_activity.png"
+                _visualize_developer_activity(results["commit_history"], output_file)
+                output_files["activity"] = str(output_file)
 
-            elif viz_type == "activity":
-                output_file = _visualize_developer_activity(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
+            elif viz_type == "risk_treemap" and "risk_scores" in results:
+                output_file = output_dir / "risk_treemap.png"
+                _visualize_risk_treemap(results["risk_scores"], results.get("risk_factors", {}), output_file)
+                output_files["risk_treemap"] = str(output_file)
 
-            elif viz_type == "treemap":
-                output_file = _visualize_risk_treemap(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
-
-            elif viz_type == "heatmap":
-                output_file = _visualize_risk_heatmap(
-                    results, output_dir, file_format, max_items, figsize, dpi, cmap)
-
-            else:
-                logger.warning(f"Unknown visualization type: {viz_type}")
-                output_file = None
-
-            if output_file:
-                output_files[viz_type] = output_file
-                logger.info(f"Generated {viz_type} visualization: {output_file}")
-
-            # Report progress if callback is provided
-            if progress_callback:
-                progress_callback()
+            elif viz_type == "risk_heatmap" and "risk_scores" in results:
+                output_file = output_dir / "risk_heatmap.png"
+                _visualize_risk_heatmap(results["risk_scores"], output_file)
+                output_files["risk_heatmap"] = str(output_file)
 
         except Exception as e:
-            logger.exception(f"Error generating {viz_type} visualization: {str(e)}")
+            logger.error(f"Error generating {viz_type} visualization: {str(e)}")
 
+    logger.info(f"Generated {len(output_files)} visualizations")
     return output_files
 
 
-def _visualize_risk_scores(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
+def _visualize_risk_scores(risk_scores: Dict[str, float], output_file: Path) -> None:
     """
-    Visualize risk scores as a horizontal bar chart.
+    Visualize risk scores as a bar chart.
 
     Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
-
-    Returns:
-        Path to output file
+        risk_scores: Dictionary mapping file paths to risk scores
+        output_file: Path to save the visualization
     """
-    # Extract risk scores
-    risk_scores = results.get("risk_scores", {})
+    logger.debug(f"Generating risk score visualization with {len(risk_scores)} files")
 
-    if not risk_scores:
-        logger.warning("No risk scores found, skipping risk score visualization")
-        return None
+    # Sort files by risk score (descending)
+    sorted_items = sorted(
+        risk_scores.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-    # Sort by risk score (descending)
-    sorted_items = sorted(risk_scores.items(), key=lambda x: x[1], reverse=True)[:max_items]
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
+    # Limit to top N files for readability
+    top_n = 30
+    if len(sorted_items) > top_n:
+        logger.debug(f"Limiting visualization to top {top_n} high-risk files")
+        sorted_items = sorted_items[:top_n]
 
     # Extract data for plotting
-    files = [_simplify_path(item[0]) for item in sorted_items]
-    scores = [item[1] for item in sorted_items]
+    file_paths = [_simplify_path(path) for path, _ in sorted_items]
+    scores = [score for _, score in sorted_items]
 
-    # Create colormap for risk levels
-    norm = mcolors.Normalize(vmin=0, vmax=1)
-    colors = plt.cm.get_cmap(cmap)(norm(scores))
+    # Create color map based on risk levels
+    colors = [_get_risk_color(score) for score in scores]
 
-    # Plot horizontal bars
-    y_pos = np.arange(len(files))
-    bars = ax.barh(y_pos, scores, align='center', color=colors)
+    # Create figure with enough height for the bars
+    fig, ax = plt.subplots(figsize=(10, max(8, len(sorted_items) * 0.3)))
 
-    # Add risk categories
-    for i, score in enumerate(scores):
-        category = _get_risk_category(score)
-        ax.text(
-            score + 0.01,  # Slight offset
-            y_pos[i],
-            category,
-            va='center',
-            fontsize=9,
-            alpha=0.8
-        )
+    # Create horizontal bar chart
+    y_pos = np.arange(len(file_paths))
+    ax.barh(y_pos, scores, color=colors)
 
-    # Set labels and title
+    # Add labels and formatting
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(files)
-    ax.invert_yaxis()  # Highest risk at the top
+    ax.set_yticklabels(file_paths)
+    ax.invert_yaxis()  # Display highest risk at the top
     ax.set_xlabel('Risk Score')
-    ax.set_title('Top Risky Files')
+    ax.set_title('File Risk Scores')
 
-    # Set x-axis limit slightly beyond 1 to make room for category labels
-    ax.set_xlim(0, 1.2)
+    # Add risk level guidelines
+    ax.axvline(x=0.7, color='red', linestyle='--', alpha=0.7)
+    ax.axvline(x=0.4, color='orange', linestyle='--', alpha=0.7)
+    ax.text(0.71, len(file_paths) - 1, 'High Risk', color='red', verticalalignment='bottom')
+    ax.text(0.41, len(file_paths) - 1, 'Medium Risk', color='orange', verticalalignment='bottom')
 
-    # Add colorbar
-    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(cmap), norm=norm)
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Risk Level')
-
-    # Add grid lines
-    ax.grid(axis='x', linestyle='--', alpha=0.7)
-
-    # Adjust layout
+    # Tight layout to ensure all labels are visible
     plt.tight_layout()
 
     # Save figure
-    output_file = output_dir / f"risk_scores.{file_format}"
-    plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-    plt.close(fig)
+    plt.savefig(output_file)
+    plt.close()
 
-    return str(output_file)
+    logger.debug(f"Risk score visualization saved to {output_file}")
 
 
-def _visualize_change_coupling(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
+def _visualize_coupling_network(coupling_matrix: Dict[str, Dict[str, float]],
+                                output_file: Path,
+                                threshold: float = 0.5,
+                                max_nodes: int = 50) -> None:
     """
-    Visualize change coupling as a network graph.
+    Visualize change coupling as a network.
 
     Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
-
-    Returns:
-        Path to output file
+        coupling_matrix: Change coupling matrix
+        output_file: Path to save the visualization
+        threshold: Minimum coupling strength to include
+        max_nodes: Maximum number of nodes to display
     """
-    # Extract coupling matrix
-    coupling_matrix = results.get("coupling_matrix", {})
-    risk_scores = results.get("risk_scores", {})
+    logger.debug(f"Generating change coupling visualization with threshold {threshold}")
 
-    if not coupling_matrix:
-        logger.warning("No coupling matrix found, skipping coupling visualization")
-        return None
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Create network graph
+    # Create graph
     G = nx.Graph()
 
-    # Get top files by risk score or by coupling degree
-    if risk_scores:
-        top_files = [file for file, _ in sorted(risk_scores.items(),
-                                                key=lambda x: x[1],
-                                                reverse=True)[:max_items]]
-    else:
-        # Use files with most coupling relationships
-        file_coupling_counts = {}
-        for file, couplings in coupling_matrix.items():
-            file_coupling_counts[file] = len(couplings)
+    # Add edges for files with coupling above threshold
+    edges = []
+    for file1, couplings in coupling_matrix.items():
+        for file2, strength in couplings.items():
+            if strength >= threshold:
+                edges.append((file1, file2, {"weight": strength}))
 
-        top_files = [file for file, _ in sorted(file_coupling_counts.items(),
-                                                key=lambda x: x[1],
-                                                reverse=True)[:max_items]]
+    # If too many edges, increase threshold adaptively
+    adaptive_threshold = threshold
+    while len(edges) > 200 and adaptive_threshold < 0.95:
+        adaptive_threshold += 0.05
+        edges = [e for e in edges if e[2]["weight"] >= adaptive_threshold]
 
-    # Add nodes and edges
-    for file in top_files:
-        # Add node with risk score if available
-        node_attrs = {}
-        if file in risk_scores:
-            node_attrs["risk"] = risk_scores[file]
+    # Add edges to graph
+    G.add_edges_from(edges)
 
-        G.add_node(file, **node_attrs)
+    # If no edges, nothing to visualize
+    if not G.edges():
+        logger.warning(f"No coupling relationships above threshold {adaptive_threshold}")
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, f"No coupling relationships above threshold {adaptive_threshold}",
+                 horizontalalignment='center', verticalalignment='center')
+        plt.savefig(output_file)
+        plt.close()
+        return
 
-        # Add edges for coupling relationships
-        if file in coupling_matrix:
-            for coupled_file, coupling_score in coupling_matrix[file].items():
-                if coupled_file in top_files:
-                    G.add_edge(file, coupled_file, weight=coupling_score)
-
-    # Calculate node sizes based on risk or degree
-    node_sizes = []
-    node_colors = []
-
-    for node in G.nodes:
-        # Size based on risk score or degree centrality
-        if "risk" in G.nodes[node]:
-            size = 300 + 1000 * G.nodes[node]["risk"]
-            color = G.nodes[node]["risk"]
-        else:
-            size = 300 + 100 * G.degree(node)
-            color = 0.5  # Default color
-
-        node_sizes.append(size)
-        node_colors.append(color)
-
-    # Calculate edge widths based on coupling strength
-    edge_widths = [G[u][v]["weight"] * 5 for u, v in G.edges]
-
-    # Simplify node labels
-    node_labels = {node: _simplify_path(node) for node in G.nodes}
-
-    # Create layout
-    pos = nx.spring_layout(G, k=0.3, seed=42)
-
-    # Draw network
-    nx.draw_networkx_nodes(
-        G, pos,
-        ax=ax,
-        node_size=node_sizes,
-        node_color=node_colors,
-        cmap=plt.cm.get_cmap(cmap),
-        alpha=0.8
-    )
-
-    nx.draw_networkx_edges(
-        G, pos,
-        ax=ax,
-        width=edge_widths,
-        edge_color="gray",
-        alpha=0.6
-    )
-
-    # Draw labels with appropriate font sizes
-    # Adjust font size based on node size
-    for node, (x, y) in pos.items():
-        node_idx = list(G.nodes).index(node)
-        size = node_sizes[node_idx]
-        fontsize = min(12, max(8, size / 100))
-
-        ax.text(
-            x, y,
-            node_labels[node],
-            fontsize=fontsize,
-            ha='center',
-            va='center',
-            bbox=dict(facecolor='white', alpha=0.7, boxstyle="round,pad=0.2")
-        )
-
-    # Add colorbar for risk scores
-    if risk_scores:
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(cmap), norm=plt.Normalize(0, 1))
-        sm.set_array([])
-        cbar = plt.colorbar(sm, ax=ax)
-        cbar.set_label('Risk Score')
-
-    # Set title and remove axes
-    ax.set_title('Change Coupling Network')
-    ax.axis('off')
-
-    # Save figure
-    output_file = output_dir / f"change_coupling_network.{file_format}"
-    plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-    plt.close(fig)
-
-    return str(output_file)
-
-
-def _visualize_entry_points(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
-    """
-    Visualize entry points as a scatter plot.
-
-    Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
-
-    Returns:
-        Path to output file
-    """
-    # Extract entry points and risk scores
-    entry_points = results.get("entry_points", {})
-    risk_scores = results.get("risk_scores", {})
-
-    if not entry_points:
-        logger.warning("No entry points found, skipping entry point visualization")
-        return None
+    # If too many nodes, limit to most connected ones
+    if len(G) > max_nodes:
+        # Get most connected nodes by degree centrality
+        centrality = nx.degree_centrality(G)
+        top_nodes = sorted(centrality.keys(), key=lambda x: centrality[x], reverse=True)[:max_nodes]
+        G = G.subgraph(top_nodes)
 
     # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
+    plt.figure(figsize=(12, 10))
 
-    # Sort entry points by score
-    sorted_entry_points = sorted(entry_points.items(), key=lambda x: x[1], reverse=True)[:max_items]
+    # Layout
+    pos = nx.spring_layout(G, k=0.3, seed=42)
 
-    # Extract data
-    files = [_simplify_path(item[0]) for item in sorted_entry_points]
-    entry_scores = [item[1] for item in sorted_entry_points]
+    # Get edge weights for line thickness
+    edge_weights = [G[u][v]["weight"] * 3 for u, v in G.edges()]
 
-    # Get corresponding risk scores if available
-    if risk_scores:
-        risk_values = [risk_scores.get(item[0], 0) for item in sorted_entry_points]
-    else:
-        risk_values = [0.5] * len(files)  # Default value
+    # Get node degrees for node size
+    node_size = [300 * (0.1 + nx.degree(G)[node]) for node in G.nodes()]
 
-    # Create scatter plot
-    scatter = ax.scatter(
-        entry_scores,
-        np.arange(len(files)),
-        c=risk_values,
-        s=200,
-        cmap=cmap,
-        alpha=0.8,
-        edgecolors='w'
+    # Draw the network
+    nx.draw(
+        G,
+        pos,
+        with_labels=False,
+        node_color='skyblue',
+        node_size=node_size,
+        edge_color='gray',
+        width=edge_weights,
+        alpha=0.7
     )
 
-    # Add labels
-    for i, file in enumerate(files):
-        ax.text(
-            entry_scores[i] + 0.02,
-            i,
-            file,
-            va='center',
-            fontsize=10
-        )
+    # Add labels for nodes, but only for the most connected ones to avoid clutter
+    if len(G) > 15:
+        # Label only top connected nodes
+        degrees = nx.degree(G)
+        top_nodes = sorted(G.nodes(), key=lambda x: degrees[x], reverse=True)[:15]
+        label_dict = {node: _simplify_path(node) for node in top_nodes}
+    else:
+        # Label all nodes
+        label_dict = {node: _simplify_path(node) for node in G.nodes()}
+
+    nx.draw_networkx_labels(G, pos, labels=label_dict, font_size=8)
+
+    # Add title with threshold information
+    plt.title(f"Change Coupling Network (threshold: {adaptive_threshold:.2f})", fontsize=16)
+
+    # Save figure
+    plt.savefig(output_file)
+    plt.close()
+
+    logger.debug(f"Change coupling visualization saved to {output_file}")
+
+
+def _visualize_dependency_network(dependency_graph: nx.DiGraph,
+                                  output_file: Path,
+                                  max_nodes: int = 50) -> None:
+    """
+    Visualize dependency network from the structure mapper.
+
+    Args:
+        dependency_graph: Directed dependency graph
+        output_file: Path to save the visualization
+        max_nodes: Maximum number of nodes to display
+    """
+    logger.debug(f"Generating dependency network visualization")
+
+    # Create a copy for visualization
+    G = dependency_graph.copy()
+
+    # If no nodes, nothing to visualize
+    if not G.nodes():
+        logger.warning("No dependencies to visualize")
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, "No dependencies found",
+                 horizontalalignment='center', verticalalignment='center')
+        plt.savefig(output_file)
+        plt.close()
+        return
+
+    # If too many nodes, limit to most central ones
+    if len(G) > max_nodes:
+        # Get centrality measures
+        try:
+            # Try to use existing centrality if available in node attributes
+            centrality = nx.get_node_attributes(G, 'centrality')
+            if not centrality:
+                # Calculate centrality
+                centrality = nx.betweenness_centrality(G)
+        except:
+            # Fallback to degree centrality if betweenness fails
+            centrality = nx.degree_centrality(G)
+
+        # Get top central nodes
+        top_nodes = sorted(centrality.keys(), key=lambda x: centrality.get(x, 0), reverse=True)[:max_nodes]
+        G = G.subgraph(top_nodes)
+
+    # Create figure
+    plt.figure(figsize=(12, 10))
+
+    # Layout - hierarchical for directed graph
+    try:
+        pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
+    except:
+        # Fallback if graphviz not available
+        pos = nx.spring_layout(G, k=0.3, seed=42)
+
+    # Get node color based on in-degree (number of files that import this)
+    in_degree = dict(G.in_degree())
+    max_in = max(in_degree.values()) if in_degree else 1
+    node_colors = [cm.viridis(in_degree.get(node, 0) / max_in) for node in G.nodes()]
+
+    # Node size based on centrality
+    try:
+        centrality = nx.get_node_attributes(G, 'centrality') or nx.betweenness_centrality(G)
+    except:
+        centrality = nx.degree_centrality(G)
+
+    node_size = [3000 * (0.1 + centrality.get(node, 0)) for node in G.nodes()]
+
+    # Draw the network
+    nx.draw(
+        G,
+        pos,
+        with_labels=False,
+        node_size=node_size,
+        node_color=node_colors,
+        edge_color='gray',
+        arrowsize=10,
+        arrows=True,
+        alpha=0.7
+    )
+
+    # Add labels for nodes, but only for the most important ones to avoid clutter
+    if len(G) > 15:
+        # Label only top important nodes
+        top_nodes = sorted(G.nodes(), key=lambda x: centrality.get(x, 0), reverse=True)[:15]
+        label_dict = {node: _simplify_path(node) for node in top_nodes}
+    else:
+        # Label all nodes
+        label_dict = {node: _simplify_path(node) for node in G.nodes()}
+
+    nx.draw_networkx_labels(G, pos, labels=label_dict, font_size=8)
+
+    # Add title
+    plt.title("Code Dependency Network", fontsize=16)
+
+    # Add legend for node colors
+    sm = plt.cm.ScalarMappable(cmap=cm.viridis, norm=plt.Normalize(0, max_in))
+    sm.set_array([])
+    cbar = plt.colorbar(sm)
+    cbar.set_label('Import Count (In-Degree)')
+
+    # Save figure
+    plt.savefig(output_file)
+    plt.close()
+
+    logger.debug(f"Dependency network visualization saved to {output_file}")
+
+
+def _visualize_developer_activity(commit_history: List[Dict],
+                                  output_file: Path,
+                                  days: int = 90) -> None:
+    """
+    Visualize developer activity over time.
+
+    Args:
+        commit_history: List of commit objects
+        output_file: Path to save the visualization
+        days: Number of days to include in the visualization
+    """
+    logger.debug(f"Generating developer activity visualization for the past {days} days")
+
+    # Filter commits to the specified time range
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
+
+    # Group commits by date and author
+    date_range = [start_date + timedelta(days=i) for i in range(days + 1)]
+    date_str = [d.strftime('%Y-%m-%d') for d in date_range]
+
+    # Extract commit dates and authors
+    filtered_commits = []
+    for commit in commit_history:
+        if isinstance(commit, dict):
+            commit_date = commit.get('date')
+            commit_author = commit.get('author')
+            if commit_date and commit_author:
+                if not isinstance(commit_date, datetime):
+                    try:
+                        commit_date = datetime.strptime(commit_date, '%Y-%m-%d %H:%M:%S')
+                    except:
+                        continue
+                if start_date <= commit_date <= end_date:
+                    filtered_commits.append({
+                        'date': commit_date,
+                        'author': commit_author
+                    })
+        else:
+            # Handle case where commit is an object with different attributes
+            commit_date = getattr(commit, 'date', None)
+            commit_author = getattr(commit, 'author', None)
+            if commit_date and commit_author:
+                if start_date <= commit_date <= end_date:
+                    filtered_commits.append({
+                        'date': commit_date,
+                        'author': commit_author
+                    })
+
+    # Count commits by day and author
+    author_commits = {}
+    for commit in filtered_commits:
+        day_str = commit['date'].strftime('%Y-%m-%d')
+        author = commit['author']
+        if author not in author_commits:
+            author_commits[author] = {d: 0 for d in date_str}
+        author_commits[author][day_str] = author_commits[author].get(day_str, 0) + 1
+
+    # If no data, return empty visualization
+    if not author_commits:
+        logger.warning("No commit data found for the specified time range")
+        plt.figure(figsize=(10, 6))
+        plt.text(0.5, 0.5, "No commit data found for the specified time range",
+                 horizontalalignment='center', verticalalignment='center')
+        plt.savefig(output_file)
+        plt.close()
+        return
+
+    # Limit to top N authors by commit count
+    top_n = 10
+    author_totals = {author: sum(commits.values()) for author, commits in author_commits.items()}
+    top_authors = sorted(author_totals.items(), key=lambda x: x[1], reverse=True)[:top_n]
+
+    # Create figure
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]})
+
+    # Prepare data for stacked area chart
+    dates = [datetime.strptime(d, '%Y-%m-%d') for d in date_str]
+    commit_data = []
+    authors = []
+
+    for author, _ in top_authors:
+        authors.append(author)
+        commit_data.append([author_commits[author][d] for d in date_str])
+
+    # Create stacked area chart - binned by week
+    ax1.stackplot(dates, commit_data, labels=authors, alpha=0.7)
+
+    # Format x-axis to show dates nicely
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    ax1.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
+    plt.setp(ax1.get_xticklabels(), rotation=45, ha='right')
 
     # Set labels and title
-    ax.set_yticks([])  # Hide y-tick labels
-    ax.set_xlabel('Entry Point Score')
-    ax.set_title('Repository Entry Points')
-
-    # Add colorbar for risk scores
-    if any(score > 0 for score in risk_values):
-        cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label('Risk Score')
-
-    # Add grid lines
-    ax.grid(axis='x', linestyle='--', alpha=0.7)
-
-    # Adjust layout
-    plt.tight_layout()
-
-    # Save figure
-    output_file = output_dir / f"entry_points.{file_format}"
-    plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-    plt.close(fig)
-
-    return str(output_file)
-
-
-def _visualize_dependency_network(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
-    """
-    Visualize dependency network with entry points highlighted.
-
-    Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
-
-    Returns:
-        Path to output file
-    """
-    # Extract required data
-    risk_scores = results.get("risk_scores", {})
-    entry_points = results.get("entry_points", {})
-    coupling_matrix = results.get("coupling_matrix", {})
-
-    if not risk_scores or not coupling_matrix:
-        logger.warning("Missing required data for dependency network visualization")
-        return None
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Create network graph
-    G = nx.DiGraph()
-
-    # Select top risky files
-    top_files = [file for file, _ in sorted(risk_scores.items(),
-                                            key=lambda x: x[1],
-                                            reverse=True)[:max_items]]
-
-    # Add nodes
-    for file in top_files:
-        is_entry = file in entry_points
-        entry_score = entry_points.get(file, 0)
-        risk_score = risk_scores.get(file, 0)
-
-        G.add_node(
-            file,
-            risk=risk_score,
-            is_entry=is_entry,
-            entry_score=entry_score
-        )
-
-    # Add edges
-    for source in top_files:
-        if source in coupling_matrix:
-            for target, weight in coupling_matrix[source].items():
-                if target in top_files:
-                    G.add_edge(source, target, weight=weight)
-
-    # Calculate node attributes
-    node_sizes = []
-    node_colors = []
-    node_shapes = []
-
-    for node in G.nodes:
-        # Size based on risk and entry score
-        if G.nodes[node]["is_entry"]:
-            size = 300 + 1000 * G.nodes[node]["entry_score"]
-            shape = "o"  # Circle for entry points
-        else:
-            size = 300 + 500 * G.nodes[node]["risk"]
-            shape = "s"  # Square for non-entry points
-
-        # Color based on risk score
-        color = G.nodes[node]["risk"]
-
-        node_sizes.append(size)
-        node_colors.append(color)
-        node_shapes.append(shape)
-
-    # Calculate edge widths and colors
-    edge_widths = []
-    edge_colors = []
-
-    for u, v in G.edges:
-        weight = G[u][v]["weight"]
-        target_risk = G.nodes[v]["risk"]
-
-        edge_widths.append(weight * 3)
-        edge_colors.append(target_risk)  # Color based on target risk
-
-    # Create layout with entry points emphasized
-    pos = nx.spring_layout(G, k=0.3, seed=42)
-
-    # Draw network with different node shapes
-    # Draw circles (entry points)
-    circle_nodes = [node for node, shape in zip(G.nodes, node_shapes) if shape == "o"]
-    circle_idx = [i for i, shape in enumerate(node_shapes) if shape == "o"]
-
-    if circle_nodes:
-        nx.draw_networkx_nodes(
-            G, pos,
-            ax=ax,
-            nodelist=circle_nodes,
-            node_size=[node_sizes[i] for i in circle_idx],
-            node_color=[node_colors[i] for i in circle_idx],
-            cmap=plt.cm.get_cmap(cmap),
-            edgecolors='white',
-            linewidths=2,
-            alpha=0.9
-        )
-
-    # Draw squares (non-entry points)
-    square_nodes = [node for node, shape in zip(G.nodes, node_shapes) if shape == "s"]
-    square_idx = [i for i, shape in enumerate(node_shapes) if shape == "s"]
-
-    if square_nodes:
-        nx.draw_networkx_nodes(
-            G, pos,
-            ax=ax,
-            nodelist=square_nodes,
-            node_shape="s",
-            node_size=[node_sizes[i] for i in square_idx],
-            node_color=[node_colors[i] for i in square_idx],
-            cmap=plt.cm.get_cmap(cmap),
-            edgecolors='black',
-            linewidths=1,
-            alpha=0.8
-        )
-
-    # Draw edges
-    nx.draw_networkx_edges(
-        G, pos,
-        ax=ax,
-        width=edge_widths,
-        edge_color=edge_colors,
-        edge_cmap=plt.cm.get_cmap(cmap),
-        alpha=0.6,
-        arrows=True,
-        arrowsize=15,
-        arrowstyle='->'
-    )
-
-    # Simplify node labels and draw them
-    node_labels = {node: _simplify_path(node) for node in G.nodes}
-
-    # Draw labels with appropriate font sizes
-    for node, (x, y) in pos.items():
-        node_idx = list(G.nodes).index(node)
-        size = node_sizes[node_idx]
-        fontsize = min(12, max(8, size / 120))
-
-        ax.text(
-            x, y,
-            node_labels[node],
-            fontsize=fontsize,
-            ha='center',
-            va='center',
-            bbox=dict(facecolor='white', alpha=0.7, boxstyle="round,pad=0.2")
-        )
+    ax1.set_ylabel('Number of Commits')
+    ax1.set_title(f'Developer Activity (Last {days} Days)')
 
     # Add legend
-    legend_elements = [
-        plt.Line2D([0], [0], marker='o', color='w', label='Entry Points',
-                   markerfacecolor='gray', markersize=15, markeredgecolor='white', markeredgewidth=2),
-        plt.Line2D([0], [0], marker='s', color='w', label='Other Files',
-                   markerfacecolor='gray', markersize=12, markeredgecolor='black')
-    ]
+    ax1.legend(loc='upper left')
 
-    ax.legend(handles=legend_elements, loc='upper right')
+    # Add commit heatmap by weekday/hour
+    weekday_hour = {}
+    for commit in filtered_commits:
+        weekday = commit['date'].weekday()
+        hour = commit['date'].hour
+        key = (weekday, hour)
+        weekday_hour[key] = weekday_hour.get(key, 0) + 1
 
-    # Add colorbar for risk scores
-    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(cmap), norm=plt.Normalize(0, 1))
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Risk Score')
+    # Create heatmap data
+    heatmap_data = np.zeros((7, 24))
+    for (weekday, hour), count in weekday_hour.items():
+        heatmap_data[weekday, hour] = count
 
-    # Set title and remove axes
-    ax.set_title('Dependency Network with Risk Indicators')
-    ax.axis('off')
+    # Plot heatmap
+    weekday_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    ax2.imshow(heatmap_data, aspect='auto', cmap='YlGnBu')
+
+    # Configure heatmap axes
+    ax2.set_yticks(np.arange(7))
+    ax2.set_yticklabels(weekday_names)
+    ax2.set_xticks(np.arange(0, 24, 2))
+    ax2.set_xticklabels([f"{h:02d}:00" for h in range(0, 24, 2)])
+    ax2.set_title('Commit Activity by Weekday and Hour')
+    ax2.set_xlabel('Hour of Day (UTC)')
+
+    # Add colorbar
+    cbar = plt.colorbar(plt.cm.ScalarMappable(cmap='YlGnBu'), ax=ax2)
+    cbar.set_label('Number of Commits')
+
+    # Adjust layout
+    plt.tight_layout()
 
     # Save figure
-    output_file = output_dir / f"dependency_network.{file_format}"
-    plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-    plt.close(fig)
+    plt.savefig(output_file)
+    plt.close()
 
-    return str(output_file)
+    logger.debug(f"Developer activity visualization saved to {output_file}")
 
 
-def _visualize_developer_activity(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
+def _visualize_risk_treemap(risk_scores: Dict[str, float],
+                            risk_factors: Dict[str, Dict[str, float]],
+                            output_file: Path,
+                            min_risk: float = 0.3) -> None:
     """
-    Visualize developer activity trends.
+    Visualize risk scores as a treemap, grouping files by directory.
 
     Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
-
-    Returns:
-        Path to output file
+        risk_scores: Dictionary mapping file paths to risk scores
+        risk_factors: Dictionary mapping files to their risk factor breakdowns
+        output_file: Path to save the visualization
+        min_risk: Minimum risk score to include in visualization
     """
-    # Extract developer activity data
-    developer_data = results.get("developer_data", {})
-    risk_scores = results.get("risk_scores", {})
+    logger.debug(f"Generating risk treemap visualization with {len(risk_scores)} files")
 
-    if not developer_data:
-        logger.warning("No developer data found, skipping developer activity visualization")
-        return None
+    # Filter to files with risk above threshold
+    filtered_scores = {path: score for path, score in risk_scores.items() if score >= min_risk}
+
+    if not filtered_scores:
+        logger.warning(f"No files with risk score >= {min_risk}")
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, f"No files with risk score >= {min_risk}",
+                 horizontalalignment='center', verticalalignment='center')
+        plt.savefig(output_file)
+        plt.close()
+        return
+
+    # Group files by directory
+    dir_structure = {}
+    for path, score in filtered_scores.items():
+        parts = path.split('/')
+        if len(parts) > 1:
+            # Has directory
+            directory = '/'.join(parts[:-1])
+            filename = parts[-1]
+        else:
+            # In root directory
+            directory = '(root)'
+            filename = path
+
+        if directory not in dir_structure:
+            dir_structure[directory] = {}
+
+        dir_structure[directory][filename] = score
+
+    # Prepare data for treemap
+    treemap_data = []
+
+    # First add directories
+    for directory, files in dir_structure.items():
+        # Calculate total risk and file count for directory
+        total_risk = sum(files.values())
+        file_count = len(files)
+
+        # Add directory entry
+        treemap_data.append({
+            'name': directory,
+            'value': total_risk * 100,  # Scale for better visualization
+            'color': 'lightgray',
+            'alpha': 0.7,
+            'is_dir': True
+        })
+
+        # Add entries for high-risk files
+        for filename, score in sorted(files.items(), key=lambda x: x[1], reverse=True):
+            if len(treemap_data) > 100:  # Limit entries for readability
+                break
+
+            # Add file entry
+            treemap_data.append({
+                'name': filename,
+                'dir': directory,
+                'value': score * 100,  # Scale for better visualization
+                'color': _get_risk_color(score),
+                'alpha': 0.8,
+                'is_dir': False
+            })
 
     # Create figure
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': [2, 1]})
+    plt.figure(figsize=(12, 10))
 
-    # Extract top developers by number of commits
-    developer_commits = {dev: data.get("commits", 0) for dev, data in developer_data.items()}
-    top_devs = sorted(developer_commits.items(), key=lambda x: x[1], reverse=True)[:max_items]
+    # Get data in the format required by squarify
+    values = [item['value'] for item in treemap_data]
+    colors = [item['color'] for item in treemap_data]
+    alphas = [item['alpha'] for item in treemap_data]
 
-    # Extract data for plotting
-    dev_names = [dev[0] for dev in top_devs]
-    dev_commits = [dev[1] for dev in top_devs]
+    # Create treemap
+    squarify.plot(sizes=values, color=colors, alpha=alphas, label=[item['name'] for item in treemap_data],
+                  text_kwargs={'fontsize': 8, 'wrap': True})
 
-    # Plot 1: Developer commits
-    bars = ax1.bar(dev_names, dev_commits, color=plt.cm.get_cmap(cmap)(np.linspace(0, 1, len(dev_names))))
+    # Set title and remove axes
+    plt.title('Code Risk Treemap (by Directory)', fontsize=16)
+    plt.axis('off')
 
-    # Add commit count labels on the bars
-    for bar, count in zip(bars, dev_commits):
-        height = bar.get_height()
-        ax1.text(
-            bar.get_x() + bar.get_width() / 2.,
-            height + 0.1,
-            f"{count}",
-            ha='center',
-            va='bottom',
-            fontsize=9
-        )
+    # Add legend
+    high_patch = plt.Rectangle((0, 0), 1, 1, color=_get_risk_color(0.8), alpha=0.8, label='High Risk')
+    medium_patch = plt.Rectangle((0, 0), 1, 1, color=_get_risk_color(0.5), alpha=0.8, label='Medium Risk')
+    low_patch = plt.Rectangle((0, 0), 1, 1, color=_get_risk_color(0.3), alpha=0.8, label='Low Risk')
+    dir_patch = plt.Rectangle((0, 0), 1, 1, color='lightgray', alpha=0.7, label='Directories')
 
-    # Calculate risk statistics per developer
-    dev_risk_stats = {}
-    for dev, data in developer_data.items():
-        modified_files = data.get("modified_files", [])
-        if modified_files:
-            dev_risks = [risk_scores.get(file, 0) for file in modified_files if file in risk_scores]
-            if dev_risks:
-                avg_risk = sum(dev_risks) / len(dev_risks)
-                max_risk = max(dev_risks)
-                dev_risk_stats[dev] = {
-                    "avg_risk": avg_risk,
-                    "max_risk": max_risk
-                }
-
-    # Plot 2: Developer risk scores
-    if dev_risk_stats:
-        top_dev_names = dev_names  # Use same developers as in commit chart
-
-        # Extract average and max risk for selected developers
-        avg_risks = [dev_risk_stats.get(dev, {"avg_risk": 0})["avg_risk"] for dev in top_dev_names]
-        max_risks = [dev_risk_stats.get(dev, {"max_risk": 0})["max_risk"] for dev in top_dev_names]
-
-        # Create width for bars
-        width = 0.35
-        x = np.arange(len(top_dev_names))
-
-        # Plot average and max risk bars
-        ax2.bar(x - width / 2, avg_risks, width, label='Avg Risk', color='cornflowerblue')
-        ax2.bar(x + width / 2, max_risks, width, label='Max Risk', color='salmon')
-
-        ax2.set_xticks(x)
-        ax2.set_xticklabels(top_dev_names, rotation=45, ha='right')
-        ax2.set_ylim(0, 1.0)
-        ax2.legend(loc='upper right')
-    else:
-        ax2.text(
-            0.5, 0.5,
-            "No risk data available for developers",
-            ha='center',
-            va='center',
-            fontsize=12
-        )
-
-    # Set labels and titles
-    ax1.set_ylabel('Number of Commits')
-    ax1.set_title('Developer Activity')
-    ax2.set_ylabel('Risk Score')
-    ax2.set_title('Developer Risk Profile')
-
-    # Set x-tick positions and labels for developer chart
-    ax1.set_xticklabels(dev_names, rotation=45, ha='right')
-
-    # Add grid lines
-    ax1.grid(axis='y', linestyle='--', alpha=0.7)
-    ax2.grid(axis='y', linestyle='--', alpha=0.7)
-
-    # Adjust layout
-    plt.tight_layout()
+    plt.legend(handles=[high_patch, medium_patch, low_patch, dir_patch], loc='upper right')
 
     # Save figure
-    output_file = output_dir / f"developer_activity.{file_format}"
-    plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-    plt.close(fig)
+    plt.savefig(output_file)
+    plt.close()
 
-    return str(output_file)
+    logger.debug(f"Risk treemap visualization saved to {output_file}")
 
 
-def _visualize_risk_treemap(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
+def _visualize_risk_heatmap(risk_scores: Dict[str, float],
+                            output_file: Path,
+                            group_by_directory: bool = True) -> None:
     """
-    Visualize risk scores as a treemap by directory structure.
+    Visualize risk scores as a heatmap showing distribution across the codebase.
 
     Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
-
-    Returns:
-        Path to output file
+        risk_scores: Dictionary mapping file paths to risk scores
+        output_file: Path to save the visualization
+        group_by_directory: Whether to group and aggregate by directory
     """
-    try:
-        # This visualization requires squarify package
-        import squarify
+    logger.debug(f"Generating risk heatmap visualization")
 
-        # Extract risk scores
-        risk_scores = results.get("risk_scores", {})
+    if not risk_scores:
+        logger.warning("No risk scores to visualize")
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, "No risk score data available",
+                 horizontalalignment='center', verticalalignment='center')
+        plt.savefig(output_file)
+        plt.close()
+        return
 
-        if not risk_scores:
-            logger.warning("No risk scores found, skipping treemap visualization")
-            return None
-
-        # Group files by directory
+    # Parse paths and prepare data structure
+    if group_by_directory:
+        # Group by directory
         dir_risks = {}
-        for file, risk in risk_scores.items():
-            directory = os.path.dirname(file) or "/"  # Use "/" for root directory
+        dir_counts = {}
+
+        for path, score in risk_scores.items():
+            parts = path.split('/')
+            if len(parts) > 1:
+                # Has directory
+                directory = '/'.join(parts[:-1])
+            else:
+                # In root directory
+                directory = '(root)'
+
             if directory not in dir_risks:
-                dir_risks[directory] = {"total_risk": 0, "count": 0, "max_risk": 0}
+                dir_risks[directory] = 0
+                dir_counts[directory] = 0
 
-            dir_risks[directory]["total_risk"] += risk
-            dir_risks[directory]["count"] += 1
-            dir_risks[directory]["max_risk"] = max(dir_risks[directory]["max_risk"], risk)
+            dir_risks[directory] += score
+            dir_counts[directory] += 1
 
-        # Calculate average risk for each directory
-        for dir_name, stats in dir_risks.items():
-            stats["avg_risk"] = stats["total_risk"] / stats["count"]
+        # Calculate average risk by directory
+        dir_avg_risk = {d: dir_risks[d] / dir_counts[d] for d in dir_risks}
 
-        # Sort directories by total risk and limit to max items
-        top_dirs = sorted(
-            dir_risks.items(),
-            key=lambda x: x[1]["total_risk"],
-            reverse=True
-        )[:max_items]
+        # Create entries for visualization
+        labels = []
+        values = []
+
+        for d, risk in sorted(dir_avg_risk.items(), key=lambda x: x[1], reverse=True):
+            labels.append(d)
+            values.append(risk)
+
+        # Limit number of entries for readability
+        if len(labels) > 30:
+            labels = labels[:30]
+            values = values[:30]
 
         # Create figure
-        fig, ax = plt.subplots(figsize=figsize)
+        plt.figure(figsize=(12, 10))
 
-        # Extract data for plotting
-        dir_names = [_simplify_path(item[0]) for item in top_dirs]
-        dir_sizes = [item[1]["count"] for item in top_dirs]  # Size by number of files
-        dir_colors = [item[1]["avg_risk"] for item in top_dirs]  # Color by average risk
-        dir_max_risks = [item[1]["max_risk"] for item in top_dirs]  # For labeling
+        # Create colormap
+        cmap = plt.cm.get_cmap('YlOrRd')
 
-        # Create treemap
-        squarify.plot(
-            sizes=dir_sizes,
-            label=[f"{name}\nMax: {risk:.2f}" for name, risk in zip(dir_names, dir_max_risks)],
-            alpha=0.8,
-            color=plt.cm.get_cmap(cmap)(dir_colors),
-            ax=ax
-        )
+        # Create horizontal bars with color based on risk
+        y_pos = np.arange(len(labels))
+        colors = [cmap(val) for val in values]
+
+        plt.barh(y_pos, values, color=colors)
+        plt.yticks(y_pos, labels)
+        plt.xlabel('Average Risk Score')
+        plt.title('Directory Risk Heatmap')
 
         # Add colorbar
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(cmap), norm=plt.Normalize(0, 1))
-        sm.set_array([])
-        cbar = plt.colorbar(sm, ax=ax)
-        cbar.set_label('Average Risk Score')
+        sm = plt.cm.ScalarMappable(cmap=cmap)
+        sm.set_array(values)
+        cbar = plt.colorbar(sm)
+        cbar.set_label('Risk Level')
 
-        # Set title and remove axes
-        ax.set_title('Risk Distribution by Directory')
-        ax.axis('off')
+        # Add risk level indicators
+        plt.axvline(x=0.7, color='red', linestyle='--', alpha=0.7)
+        plt.axvline(x=0.4, color='orange', linestyle='--', alpha=0.7)
+        plt.text(0.71, len(labels) - 1, 'High Risk', color='red', verticalalignment='bottom')
+        plt.text(0.41, len(labels) - 1, 'Medium Risk', color='orange', verticalalignment='bottom')
 
-        # Save figure
-        output_file = output_dir / f"risk_treemap.{file_format}"
-        plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-        plt.close(fig)
+    else:
+        # Create a hierarchical path structure
+        path_structure = {}
 
-        return str(output_file)
+        for path, score in risk_scores.items():
+            parts = path.split('/')
+            current = path_structure
 
-    except ImportError:
-        logger.warning("Treemap visualization requires squarify package. Skipping.")
-        return None
+            # Build the path hierarchy
+            for i, part in enumerate(parts):
+                if i == len(parts) - 1:
+                    # Leaf node (file)
+                    current[part] = score
+                else:
+                    # Directory node
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
 
+        # Create figure
+        plt.figure(figsize=(12, 12))
 
-def _visualize_risk_heatmap(
-        results: Dict[str, Any],
-        output_dir: Path,
-        file_format: str,
-        max_items: int,
-        figsize: Tuple[int, int],
-        dpi: int,
-        cmap: str
-) -> str:
-    """
-    Visualize risk factors as a heatmap.
+        # Use recursive function to plot hierarchy (implementation omitted for brevity)
+        # This would require a more complex visualization library like plotly or custom sunburst chart
 
-    Args:
-        results: Results dictionary
-        output_dir: Output directory
-        file_format: Output file format
-        max_items: Maximum items to display
-        figsize: Figure size
-        dpi: DPI for output
-        cmap: Colormap name
+        # For simplicity, we'll use a scatter plot with directories as x and files as y
+        x = []
+        y = []
+        s = []  # sizes
+        c = []  # colors
 
-    Returns:
-        Path to output file
-    """
-    # Extract risk factors and scores
-    risk_factors = results.get("risk_factors", {})
-    risk_scores = results.get("risk_scores", {})
+        for path, score in risk_scores.items():
+            parts = path.split('/')
+            if len(parts) > 1:
+                # Has directory
+                directory = parts[0]
+                filename = '/'.join(parts[1:])
+            else:
+                # In root directory
+                directory = '(root)'
+                filename = path
 
-    if not risk_factors or not risk_scores:
-        logger.warning("No risk factors or scores found, skipping heatmap visualization")
-        return None
+            x.append(directory)
+            y.append(filename)
+            s.append(score * 100)  # Scale for visibility
+            c.append(score)
 
-    # Get top risky files
-    top_files = [file for file, _ in sorted(risk_scores.items(),
-                                            key=lambda x: x[1],
-                                            reverse=True)[:max_items]]
+        # Create scatter plot
+        unique_dirs = sorted(set(x))
+        dir_indices = {d: i for i, d in enumerate(unique_dirs)}
 
-    # Create data matrix for heatmap
-    # Collect all factor names and find which ones are available
-    all_factors = set()
-    for file, factors in risk_factors.items():
-        all_factors.update(factors.keys())
-
-    factor_list = sorted(list(all_factors))
-
-    # Build data matrix
-    data_matrix = []
-    file_labels = []
-
-    for file in top_files:
-        file_labels.append(_simplify_path(file))
-
-        if file in risk_factors:
-            file_factors = risk_factors[file]
-            row_data = [file_factors.get(factor, 0) for factor in factor_list]
-        else:
-            row_data = [0] * len(factor_list)
-
-        data_matrix.append(row_data)
-
-    # Convert to numpy array for heatmap
-    data_array = np.array(data_matrix)
-
-    # Create figure (wider figure for factor labels)
-    fig, ax = plt.subplots(figsize=(figsize[0] + 2, figsize[1]))
-
-    # Create heatmap with Seaborn
-    heatmap = sns.heatmap(
-        data_array,
-        cmap=cmap,
-        annot=True,
-        fmt=".2f",
-        linewidths=.5,
-        ax=ax,
-        yticklabels=file_labels,
-        xticklabels=factor_list,
-        cbar_kws={'label': 'Risk Factor Value'}
-    )
-
-    # Rotate x labels for better readability
-    plt.xticks(rotation=45, ha='right')
-
-    # Set title and labels
-    ax.set_title('Risk Factors Heatmap')
-
-    # Adjust layout
-    plt.tight_layout()
+        plt.scatter([dir_indices[d] for d in x], y, s=s, c=c, cmap='YlOrRd', alpha=0.6)
+        plt.xticks(range(len(unique_dirs)), unique_dirs, rotation=90)
+        plt.title('File Risk Heatmap')
+        plt.colorbar(label='Risk Score')
+        plt.tight_layout()
 
     # Save figure
-    output_file = output_dir / f"risk_heatmap.{file_format}"
-    plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
-    plt.close(fig)
+    plt.tight_layout()
+    plt.savefig(output_file)
+    plt.close()
 
-    return str(output_file)
+    logger.debug(f"Risk heatmap visualization saved to {output_file}")
 
 
-def _simplify_path(path: str, max_length: int = 30) -> str:
+def _simplify_path(path: str) -> str:
     """
-    Simplify file path for display in visualizations.
+    Simplify a file path for display in visualizations.
 
     Args:
-        path: File path
-        max_length: Maximum length for the simplified path
+        path: Full file path
 
     Returns:
-        Simplified path
+        Simplified file path for display
     """
-    # Handle None inputs
-    if not path:
-        return ""
-
-    # Use os.path for proper path handling
-    basename = os.path.basename(path)
-    dirname = os.path.dirname(path)
-
-    if len(path) <= max_length:
+    # If path is short, return it as is
+    if len(path) < 30:
         return path
 
-    # Keep the basename and abbreviate the path
-    if len(basename) > max_length - 4:
-        # If basename alone is too long, truncate it
-        return f"...{basename[-(max_length - 4):]}"
-    else:
-        # Keep full basename, abbreviate directory
-        available_length = max_length - len(basename) - 4  # 4 for ".../"
-        if available_length <= 0:
-            return f".../{basename}"
+    # Extract meaningful parts
+    parts = path.split('/')
 
-        # Take the end of the dirname
-        return f"...{dirname[-available_length:]}/{basename}"
+    if len(parts) <= 2:
+        # Just filename or directory/filename
+        return path
+
+    elif len(parts) == 3:
+        # Simple case like "src/module/file.py"
+        return path
+
+    else:
+        # More complex path
+        # Keep first directory, use ellipsis for middle, and keep last 2 parts
+        first = parts[0]
+        last_two = '/'.join(parts[-2:])
+        return f"{first}/.../{last_two}"
+
+
+def _get_risk_color(risk_score: float) -> str:
+    """
+    Get color based on risk score.
+
+    Args:
+        risk_score: Risk score (0-1)
+
+    Returns:
+        Color string
+    """
+    if risk_score >= 0.7:
+        return '#d73027'  # Red
+    elif risk_score >= 0.4:
+        return '#fc8d59'  # Orange
+    else:
+        return '#91bfdb'  # Blue
 
 
 def _get_risk_category(risk_score: float) -> str:
     """
-    Get risk category label based on risk score.
+    Get risk category based on risk score.
 
     Args:
-        risk_score: Risk score (0.0 to 1.0)
+        risk_score: Risk score (0-1)
 
     Returns:
-        Risk category label
+        Risk category string
     """
-    if risk_score >= 0.8:
-        return "Critical"
-    elif risk_score >= 0.6:
-        return "High"
+    if risk_score >= 0.7:
+        return 'High'
     elif risk_score >= 0.4:
-        return "Medium"
-    elif risk_score >= 0.2:
-        return "Low"
+        return 'Medium'
     else:
-        return "Minimal"
+        return 'Low'

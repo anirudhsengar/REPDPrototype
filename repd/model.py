@@ -1,486 +1,688 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-REPD Model Core Implementation
+REPD (Repository Engineering and Project Dynamics) Model
 
-This module contains the main implementation of the Repository Entry Points
-Defects (REPD) model for bug prediction in software repositories.
+This is the main model class that orchestrates the analysis of repositories
+using various components: structure mapping, risk calculation, entry point
+detection, and change coupling analysis.
 
 Author: anirudhsengar
 """
 
+import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Tuple, Optional, Set, Union
+from typing import Dict, List, Set, Tuple, Optional, Any, Union
 
 import networkx as nx
-import numpy as np
 
-from repd.entry_point_analyzer import EntryPointIdentifier
-from repd.change_coupling import ChangeCouplingAnalyzer
-from repd.developer_activity import DeveloperActivityTracker
 from repd.repository import Repository
-from repd.risk_calculator import DefectRiskCalculator
+from repd.structure_mapper import StructureMapper
+from repd.risk_calculator import RiskCalculator
+from repd.entry_point_detector import EntryPointDetector
+from repd.change_coupling_analyzer import ChangeCouplingAnalyzer
+from repd.visualization import visualize_results
 
 logger = logging.getLogger(__name__)
 
 
 class REPDModel:
     """
-    Repository Entry Points Defects (REPD) Model
+    Main model class for the REPD (Repository Engineering and Project Dynamics) system.
 
-    A bug prediction approach that analyzes repository entry points,
-    change coupling patterns, and developer activity to predict
-    defect-prone files in software repositories.
-
-    Key features:
-    - Identifies critical repository entry points
-    - Analyzes change coupling between files
-    - Studies developer expertise and contribution patterns
-    - Maps structural and dependency relationships
+    This class orchestrates the analysis of repositories to identify risk patterns,
+    structural dependencies, and project dynamics.
     """
 
-    version = "0.1.0"
-
-    def __init__(
-            self,
-            repository: Union[Repository, str],
-            lookback_commits: int = 1000,
-            entry_point_weight: float = 0.5,
-            coupling_threshold: float = 0.3,
-            min_change_count: int = 5,
-            dev_expertise_weight: float = 0.3,
-            path_complexity_weight: float = 0.2,
-    ):
+    def __init__(self, repository: Repository):
         """
-        Initialize the REPD model.
+        Initialize the REPD model with a repository.
 
         Args:
-            repository: Repository object or path to repository
-            lookback_commits: Number of commits to analyze
-            entry_point_weight: Weight for entry point importance
-            coupling_threshold: Threshold for change coupling significance
-            min_change_count: Minimum changes for file consideration
-            dev_expertise_weight: Weight for developer expertise factor
-            path_complexity_weight: Weight for path complexity factor
+            repository: Repository interface to analyze
         """
-        # Initialize repository
-        if isinstance(repository, str):
-            self.repository = Repository(repository)
-        else:
-            self.repository = repository
+        self.repository = repository
 
-        # Store configuration parameters
-        self.lookback_commits = lookback_commits
-        self.entry_point_weight = entry_point_weight
-        self.coupling_threshold = coupling_threshold
-        self.min_change_count = min_change_count
-        self.dev_expertise_weight = dev_expertise_weight
-        self.path_complexity_weight = path_complexity_weight
+        # Initialize components
+        self.structure_mapper = StructureMapper(repository)
 
-        # Initialize component analyzers
-        self.entry_point_analyzer = EntryPointIdentifier(self.repository)
-        self.coupling_analyzer = ChangeCouplingAnalyzer(
-            self.repository,
-            self.coupling_threshold,
-            self.min_change_count
-        )
-        self.dev_activity_tracker = DeveloperActivityTracker(self.repository)
-        self.risk_calculator = DefectRiskCalculator()
+        # These components will be initialized after structure mapping
+        self.risk_calculator = None
+        self.entry_point_detector = None
+        self.change_coupling_analyzer = None
 
-        # Initialize results containers
-        self.entry_points: Dict[str, float] = {}
-        self.coupling_matrix: Dict[str, Dict[str, float]] = {}
-        self.dev_activity_stats: Dict[str, Dict[str, Any]] = {}
-        self.risk_scores: Dict[str, float] = {}
-        self.dependency_graph = nx.DiGraph()
-
-        # Analysis status
-        self.analyzed = False
-        self.analysis_timestamp = None
-
-    def analyze(self) -> Dict[str, Any]:
-        """
-        Perform complete REPD analysis on the repository.
-
-        Returns:
-            Dict containing analysis results:
-            - entry_points: Files identified as entry points with scores
-            - coupling_matrix: Change coupling relationships between files
-            - risk_scores: Calculated risk scores for each file
-            - dependency_graph: Graph representation of file relationships
-            - metadata: Analysis metadata
-        """
-        logger.info("Starting REPD analysis")
-        start_time = datetime.now()
-
-        # Step 1: Identify entry points
-        logger.info("Identifying repository entry points")
-        self.entry_points = self.entry_point_analyzer.identify_entry_points(
-            weight_factor=self.entry_point_weight
-        )
-
-        # Step 2: Analyze change coupling
-        logger.info("Analyzing change coupling patterns")
-        self.coupling_matrix = self.coupling_analyzer.analyze_coupling(
-            lookback=self.lookback_commits
-        )
-
-        # Step 3: Track developer activity
-        logger.info("Tracking developer activity")
-        self.dev_activity_stats = self.dev_activity_tracker.track_activity(
-            lookback=self.lookback_commits
-        )
-
-        # Step 4: Build dependency graph
-        logger.info("Building file dependency graph")
-        self.dependency_graph = self._build_dependency_graph()
-
-        # Step 5: Calculate risk scores
-        logger.info("Calculating defect risk scores")
-        self.risk_scores = self._calculate_risk_scores()
-
-        # Mark as analyzed and record timestamp
-        self.analyzed = True
-        self.analysis_timestamp = datetime.now()
-
-        analysis_time = (datetime.now() - start_time).total_seconds()
-        logger.info(f"Analysis completed in {analysis_time:.2f} seconds")
-
-        # Return results dictionary
-        return {
-            "entry_points": self.entry_points,
-            "coupling_matrix": self.coupling_matrix,
-            "dev_activity": self.dev_activity_stats,
-            "risk_scores": self.risk_scores,
-            "metadata": {
-                "timestamp": self.analysis_timestamp.isoformat(),
-                "repository": self.repository.path,
-                "lookback_commits": self.lookback_commits,
-                "entry_point_weight": self.entry_point_weight,
-                "coupling_threshold": self.coupling_threshold,
-                "analyzed_files": len(self.risk_scores),
-                "elapsed_time": analysis_time,
-            }
+        # Configuration parameters
+        self.config = {
+            "max_files": None,  # Maximum number of files to analyze (None for all)
+            "history_days": 90,  # Days of history to consider
+            "risk_weights": {  # Weights for risk calculation
+                "complexity": 0.25,
+                "churn": 0.25,
+                "coupling": 0.2,
+                "structural": 0.2,
+                "age": 0.1
+            },
+            "coupling_threshold": 0.5,  # Threshold for change coupling
+            "entry_point_min_score": 0.6,  # Minimum score for entry points
+            "exclude_patterns": [  # Patterns to exclude from analysis
+                ".git/", "venv/", "env/", "node_modules/",
+                "__pycache__/", "*.pyc", "*.pyo", "*.pyd",
+                "*.so", "*.o", "*.a", "*.lib", "*.dll",
+            ]
         }
 
-    def get_top_risky_files(self, limit: int = 10) -> List[Tuple[str, float]]:
+        # Results storage
+        self.results = {}
+
+    def configure(self, max_files: int = None, history_days: int = None,
+                  risk_weights: Dict[str, float] = None,
+                  coupling_threshold: float = None,
+                  entry_point_min_score: float = None,
+                  exclude_patterns: List[str] = None) -> None:
         """
-        Get the top risky files based on calculated scores.
+        Configure analysis parameters.
 
         Args:
-            limit: Maximum number of files to return
+            max_files: Maximum number of files to analyze
+            history_days: Days of history to consider
+            risk_weights: Weights for different risk factors
+            coupling_threshold: Threshold for change coupling
+            entry_point_min_score: Minimum score for entry points
+            exclude_patterns: Patterns to exclude from analysis
+        """
+        logger.info("Configuring REPD model")
+
+        # Update configuration parameters if specified
+        if max_files is not None:
+            self.config["max_files"] = max_files
+
+        if history_days is not None:
+            self.config["history_days"] = history_days
+
+        if risk_weights is not None:
+            self.config["risk_weights"].update(risk_weights)
+
+        if coupling_threshold is not None:
+            self.config["coupling_threshold"] = coupling_threshold
+
+        if entry_point_min_score is not None:
+            self.config["entry_point_min_score"] = entry_point_min_score
+
+        if exclude_patterns is not None:
+            self.config["exclude_patterns"] = exclude_patterns
+
+    def analyze_structure(self) -> Dict[str, Any]:
+        """
+        Analyze the structure of the repository.
+
+        This maps the dependency structure of the repository and initializes
+        other analysis components.
 
         Returns:
-            List of (filename, risk_score) tuples for top risky files
+            Dictionary with structure analysis results
         """
-        if not self.analyzed:
-            logger.warning("Repository not yet analyzed, run analyze() first")
-            return []
+        logger.info("Starting structure analysis")
 
-        return sorted(
-            self.risk_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:limit]
-
-    def visualize(self, output_path: str = "visualizations") -> None:
-        """
-        Generate visualizations from analysis results.
-
-        Args:
-            output_path: Directory to save visualizations
-        """
-        if not self.analyzed:
-            logger.warning("Repository not yet analyzed, run analyze() first")
-            return
-
-        # Import here to avoid circular imports
-        from repd.visualization import visualize_results
-
-        # Create results dictionary for visualization
-        results = {
-            "entry_points": self.entry_points,
-            "coupling_matrix": self.coupling_matrix,
-            "dev_activity": self.dev_activity_stats,
-            "risk_scores": self.risk_scores,
-            "metadata": {
-                "timestamp": self.analysis_timestamp.isoformat(),
-                "repository": self.repository.path,
-            }
-        }
-
-        # Generate visualizations
-        output_dir = Path(output_path)
-        output_dir.mkdir(exist_ok=True, parents=True)
-
-        visualize_results(
-            results=results,
-            output_dir=output_dir,
-            viz_types=["risk", "coupling", "entry_points", "network"],
-            file_format="png"
+        # Map dependency structure
+        dependency_graph = self.structure_mapper.map_structure(
+            max_files=self.config["max_files"]
         )
 
-    def analyze_file(self, filepath: str) -> Dict[str, Any]:
-        """
-        Analyze a specific file for defect risk.
+        # Calculate centrality measures
+        central_files = self.structure_mapper.get_central_files()
 
-        Args:
-            filepath: Path to the file to analyze
+        # Initialize other components now that we have structure information
+        self.risk_calculator = RiskCalculator(self.repository, self.structure_mapper)
+        self.entry_point_detector = EntryPointDetector(self.repository, self.structure_mapper)
+        self.change_coupling_analyzer = ChangeCouplingAnalyzer(self.repository)
 
-        Returns:
-            Dictionary with file analysis results
-        """
-        if not self.analyzed:
-            logger.warning("Repository not yet analyzed, run analyze() first")
-            return {}
-
-        # Normalize path to match repository format
-        filepath = self.repository.normalize_path(filepath)
-
-        # Check if file exists in analyzed files
-        if filepath not in self.risk_scores:
-            logger.warning(f"File {filepath} not found in analysis results")
-            return {}
-
-        # Get related files through coupling
-        related_files = {}
-        if filepath in self.coupling_matrix:
-            related_files = {
-                filename: score
-                for filename, score in self.coupling_matrix[filepath].items()
-                if score > self.coupling_threshold
-            }
-
-        # Get entry point status
-        entry_point_score = self.entry_points.get(filepath, 0)
-
-        # Get developer activity
-        dev_activity = self.dev_activity_stats.get(filepath, {})
-
-        # Return detailed file analysis
-        return {
-            "file": filepath,
-            "risk_score": self.risk_scores.get(filepath, 0),
-            "is_entry_point": entry_point_score > 0,
-            "entry_point_score": entry_point_score,
-            "related_files": related_files,
-            "developer_count": dev_activity.get("developer_count", 0),
-            "change_frequency": dev_activity.get("change_frequency", 0),
-            "last_modified": dev_activity.get("last_modified", ""),
-            "riskiest_related_file": max(related_files.items(), key=lambda x: x[1])[0]
-            if related_files else None,
+        # Store results
+        structure_results = {
+            "dependency_graph": dependency_graph,
+            "central_files": dict(central_files),
+            "file_count": len(dependency_graph.nodes()),
+            "edge_count": len(dependency_graph.edges()),
+            "analysis_timestamp": datetime.now().isoformat()
         }
 
-    def _build_dependency_graph(self) -> nx.DiGraph:
+        self.results["structure"] = structure_results
+
+        # Detect entry points
+        entry_points = self.entry_point_detector.detect_entry_points()
+        self.results["entry_points"] = entry_points
+
+        # Analyze change coupling
+        coupling_matrix = self.change_coupling_analyzer.analyze_coupling(
+            days=self.config["history_days"]
+        )
+        self.results["coupling_matrix"] = coupling_matrix
+
+        logger.info("Structure analysis completed")
+        return structure_results
+
+    def calculate_risk_scores(self) -> Dict[str, float]:
         """
-        Build a dependency graph from repository structure and coupling data.
+        Calculate risk scores for files in the repository.
 
         Returns:
-            NetworkX directed graph representing file dependencies
+            Dictionary mapping file paths to risk scores
         """
-        graph = nx.DiGraph()
+        logger.info("Calculating risk scores")
 
-        # Add nodes for all files
-        all_files = set()
-        for file in self.repository.get_all_files():
-            all_files.add(file)
-            graph.add_node(file, type="file")
+        # Ensure structure has been analyzed first
+        if not self.risk_calculator:
+            logger.warning("Structure analysis not performed, running it now")
+            self.analyze_structure()
 
-        # Add edges for change coupling
-        for source, targets in self.coupling_matrix.items():
-            for target, weight in targets.items():
-                if weight >= self.coupling_threshold:
-                    graph.add_edge(source, target, weight=weight, type="coupling")
+        # Calculate risk scores using configured weights
+        risk_scores = self.risk_calculator.calculate_risk_scores(
+            weights=self.config["risk_weights"]
+        )
 
-        # Add edges for import dependencies if available
-        # This would require language-specific parsing, placeholder for now
+        # Store results
+        self.results["risk_scores"] = risk_scores
+        self.results["risk_factors"] = self.risk_calculator.risk_factors
 
-        # Add entry point attributes
-        for file, score in self.entry_points.items():
-            if file in graph:
-                graph.nodes[file]["entry_point"] = True
-                graph.nodes[file]["entry_score"] = score
+        # Categorize files by risk level
+        risk_categories = self.risk_calculator.classify_risk()
+        self.results["risk_categories"] = risk_categories
 
-        # Add risk score attributes if calculated
-        if self.risk_scores:
-            for file, score in self.risk_scores.items():
-                if file in graph:
-                    graph.nodes[file]["risk_score"] = score
+        # Find highest risk factors for each file
+        highest_factors = self.risk_calculator.get_highest_risk_factors()
+        self.results["highest_risk_factors"] = highest_factors
 
-        return graph
-
-    def _calculate_risk_scores(self) -> Dict[str, float]:
-        """
-        Calculate defect risk scores for all files using the REPD model.
-
-        Returns:
-            Dictionary mapping filenames to risk scores (0.0-1.0)
-        """
-        # Get all files from repository
-        all_files = set(self.repository.get_all_files())
-
-        # Add files from coupling matrix and entry points
-        all_files.update(self.coupling_matrix.keys())
-        all_files.update(self.entry_points.keys())
-
-        # Initialize risk scores dictionary
-        risk_scores = {}
-
-        # Process each file
-        for filename in all_files:
-            # Skip directories and non-code files
-            if not self.repository.is_code_file(filename):
-                continue
-
-            # Calculate entry point factor (0.0-1.0)
-            entry_point_factor = self.entry_points.get(filename, 0.0)
-
-            # Calculate coupling factor (0.0-1.0)
-            coupling_factor = self._calculate_coupling_factor(filename)
-
-            # Calculate developer expertise factor (0.0-1.0)
-            dev_expertise_factor = self._calculate_dev_expertise_factor(filename)
-
-            # Calculate path complexity factor (0.0-1.0)
-            path_complexity_factor = self._calculate_path_complexity_factor(filename)
-
-            # Combine factors with weights
-            risk_score = self.risk_calculator.calculate_risk(
-                entry_point_score=entry_point_factor,
-                coupling_score=coupling_factor,
-                dev_expertise_score=dev_expertise_factor,
-                path_complexity_score=path_complexity_factor,
-                entry_point_weight=self.entry_point_weight,
-                dev_expertise_weight=self.dev_expertise_weight,
-                path_complexity_weight=self.path_complexity_weight
-            )
-
-            risk_scores[filename] = risk_score
+        logger.info(f"Risk calculation complete. Found {len(risk_categories['high_risk'])} "
+                    f"high-risk files out of {len(risk_scores)} total.")
 
         return risk_scores
 
-    def _calculate_coupling_factor(self, filename: str) -> float:
+    def analyze_entry_points(self) -> Dict[str, float]:
         """
-        Calculate the coupling factor for a file.
-
-        Args:
-            filename: The file to calculate coupling factor for
+        Analyze entry points to the codebase.
 
         Returns:
-            Coupling factor (0.0-1.0)
+            Dictionary mapping file paths to entry point scores
         """
-        # Check if file has coupling data
-        if filename not in self.coupling_matrix:
-            return 0.0
+        logger.info("Analyzing entry points")
 
-        # Get coupling values for this file
-        couplings = self.coupling_matrix[filename]
+        # Ensure structure has been analyzed first
+        if not self.entry_point_detector:
+            logger.warning("Structure analysis not performed, running it now")
+            self.analyze_structure()
 
-        # If no couplings, return 0
-        if not couplings:
-            return 0.0
+        # Analyze entry points if not already done
+        if "entry_points" not in self.results:
+            entry_points = self.entry_point_detector.detect_entry_points()
+            self.results["entry_points"] = entry_points
 
-        # Calculate the average coupling strength
-        avg_coupling = sum(couplings.values()) / len(couplings)
+        # Get significant entry points
+        significant_entry_points = {
+            path: score for path, score in self.results["entry_points"].items()
+            if score >= self.config["entry_point_min_score"]
+        }
 
-        # Calculate connectivity degree (normalized by number of files)
-        connectivity = min(1.0, len(couplings) / 20)  # Cap at 20 files
+        self.results["significant_entry_points"] = significant_entry_points
 
-        # Combine average coupling and connectivity
-        coupling_factor = 0.7 * avg_coupling + 0.3 * connectivity
+        logger.info(f"Identified {len(significant_entry_points)} significant entry points")
 
-        return coupling_factor
+        return significant_entry_points
 
-    def _calculate_dev_expertise_factor(self, filename: str) -> float:
+    def analyze_coupling(self) -> Dict[str, Dict[str, float]]:
         """
-        Calculate the developer expertise factor for a file.
-
-        Args:
-            filename: The file to calculate developer expertise for
+        Analyze change coupling between files.
 
         Returns:
-            Developer expertise factor (0.0-1.0)
+            Dictionary with change coupling matrix
         """
-        # Check if file has developer activity data
-        if filename not in self.dev_activity_stats:
-            return 0.5  # Default to medium risk
+        logger.info("Analyzing change coupling")
 
-        stats = self.dev_activity_stats[filename]
+        # Ensure change coupling analyzer is initialized
+        if not self.change_coupling_analyzer:
+            logger.warning("Structure analysis not performed, running it now")
+            self.analyze_structure()
 
-        # Calculate developer count factor (more developers = higher risk)
-        dev_count = stats.get("developer_count", 1)
-        dev_count_factor = min(1.0, dev_count / 5)  # Normalize, cap at 5 developers
+        # Analyze coupling if not already done
+        if "coupling_matrix" not in self.results:
+            coupling_matrix = self.change_coupling_analyzer.analyze_coupling(
+                days=self.config["history_days"]
+            )
+            self.results["coupling_matrix"] = coupling_matrix
 
-        # Calculate change frequency factor
-        change_freq = stats.get("change_frequency", 0)
-        change_freq_factor = min(1.0, change_freq / 20)  # Normalize, cap at 20 changes
-
-        # Calculate expertise factor (lower expertise = higher risk)
-        expertise = stats.get("expertise_level", 0.5)
-        expertise_factor = 1.0 - expertise  # Invert so higher is riskier
-
-        # Calculate ownership factor (lower ownership = higher risk)
-        ownership = stats.get("ownership", 1.0)
-        ownership_factor = 1.0 - ownership  # Invert so higher is riskier
-
-        # Combine factors
-        dev_expertise_factor = (
-                0.3 * dev_count_factor +
-                0.3 * change_freq_factor +
-                0.2 * expertise_factor +
-                0.2 * ownership_factor
+        # Get high coupling pairs
+        high_coupling_pairs = self.change_coupling_analyzer.get_high_coupling_pairs(
+            threshold=self.config["coupling_threshold"]
         )
+        self.results["high_coupling_pairs"] = high_coupling_pairs
 
-        return dev_expertise_factor
+        # Get coupled clusters
+        coupled_clusters = self.change_coupling_analyzer.get_coupled_clusters(
+            min_coupling=self.config["coupling_threshold"]
+        )
+        self.results["coupled_clusters"] = [list(cluster) for cluster in coupled_clusters]
 
-    def _calculate_path_complexity_factor(self, filename: str) -> float:
+        logger.info(f"Identified {len(high_coupling_pairs)} high coupling pairs "
+                    f"and {len(coupled_clusters)} coupled clusters")
+
+        return self.results["coupling_matrix"]
+
+    def analyze_all(self) -> Dict[str, Any]:
         """
-        Calculate the path complexity factor for a file.
-
-        Args:
-            filename: The file to calculate path complexity for
+        Perform all analyses on the repository.
 
         Returns:
-            Path complexity factor (0.0-1.0)
+            Dictionary with all analysis results
         """
-        # Simple path complexity based on file path depth
-        path_depth = len(Path(filename).parts)
+        logger.info("Starting comprehensive repository analysis")
 
-        # Normalize depth (deeper paths are riskier)
-        # Cap at depth 10 to avoid extreme values
-        normalized_depth = min(path_depth / 10, 1.0)
+        # Run all analyses
+        self.analyze_structure()
+        self.calculate_risk_scores()
+        self.analyze_entry_points()
+        self.analyze_coupling()
 
-        # Check if file is in a test directory (lower risk)
-        is_test = "test" in filename.lower() or "spec" in filename.lower()
-        test_factor = 0.7 if is_test else 1.0
+        # Add metadata
+        self.results["metadata"] = {
+            "repository_name": self.repository.get_name(),
+            "analysis_timestamp": datetime.now().isoformat(),
+            "configuration": self.config
+        }
 
-        # Calculate path complexity factor
-        path_complexity_factor = normalized_depth * test_factor
+        logger.info("Comprehensive analysis completed")
 
-        return path_complexity_factor
+        return self.results
 
+    def save_results(self, output_path: Union[str, Path]) -> None:
+        """
+        Save analysis results to a JSON file.
 
-if __name__ == "__main__":
-    # Example usage
-    import sys
+        Args:
+            output_path: Path to save results to
+        """
+        logger.info(f"Saving results to {output_path}")
 
-    # Configure logging
-    logging.basicConfig(level=logging.INFO)
+        # Ensure output directory exists
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if len(sys.argv) < 2:
-        print("Usage: python model.py /path/to/repository")
-        sys.exit(1)
+        # Convert Graph objects to serializable format
+        serializable_results = self._prepare_for_serialization(self.results)
 
-    # Initialize model
-    repo_path = sys.argv[1]
-    model = REPDModel(repo_path)
+        # Add metadata if not already present
+        if "metadata" not in serializable_results:
+            serializable_results["metadata"] = {
+                "repository_name": self.repository.get_name(),
+                "analysis_timestamp": datetime.now().isoformat(),
+                "configuration": self.config
+            }
 
-    # Run analysis
-    results = model.analyze()
+        # Write to file
+        with open(output_path, 'w') as f:
+            json.dump(serializable_results, f, indent=2)
 
-    # Print top risky files
-    print("\nTop 10 risky files:")
-    for file, score in model.get_top_risky_files(10):
-        print(f"{file}: {score:.4f}")
+        logger.info(f"Results saved to {output_path}")
+
+    def visualize(self, output_dir: Union[str, Path], viz_types: List[str] = None) -> Dict[str, str]:
+        """
+        Generate visualizations of analysis results.
+
+        Args:
+            output_dir: Directory to save visualizations to
+            viz_types: Types of visualizations to generate (None for all)
+
+        Returns:
+            Dictionary mapping visualization types to output file paths
+        """
+        logger.info(f"Generating visualizations in {output_dir}")
+
+        # Create output directory
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate visualizations using the visualization module
+        viz_files = visualize_results(self.results, output_dir, viz_types)
+
+        logger.info(f"Generated {len(viz_files)} visualizations")
+
+        return viz_files
+
+    def identify_hotspots(self, threshold: float = 0.7) -> List[Dict[str, Any]]:
+        """
+        Identify high-risk hotspots in the codebase.
+
+        Hotspots are files with high risk that are also central to the codebase
+        or are entry points.
+
+        Args:
+            threshold: Risk score threshold for hotspots
+
+        Returns:
+            List of hotspot information dictionaries
+        """
+        logger.info(f"Identifying hotspots with threshold {threshold}")
+
+        # Ensure we have risk scores
+        if "risk_scores" not in self.results:
+            logger.warning("Risk scores not calculated, running calculation now")
+            self.calculate_risk_scores()
+
+        risk_scores = self.results["risk_scores"]
+
+        # Get centrality if available
+        centrality = {}
+        if "structure" in self.results and "central_files" in self.results["structure"]:
+            centrality = self.results["structure"]["central_files"]
+        elif hasattr(self.structure_mapper, "centrality_scores"):
+            centrality = self.structure_mapper.centrality_scores
+
+        # Get entry points if available
+        entry_points = self.results.get("entry_points", {})
+
+        # Identify hotspots
+        hotspots = []
+
+        for file, risk_score in risk_scores.items():
+            if risk_score < threshold:
+                continue
+
+            # Create hotspot entry
+            hotspot = {
+                "file": file,
+                "risk_score": risk_score,
+                "is_central": centrality.get(file, 0) > 0.5,
+                "centrality": centrality.get(file, 0),
+                "is_entry_point": entry_points.get(file, 0) > 0.5,
+                "entry_point_score": entry_points.get(file, 0),
+            }
+
+            # Add risk factors if available
+            if "risk_factors" in self.results and file in self.results["risk_factors"]:
+                hotspot["risk_factors"] = self.results["risk_factors"][file]
+
+            # Add coupling information if available
+            if "coupling_matrix" in self.results and file in self.results["coupling_matrix"]:
+                coupled_files = self.change_coupling_analyzer.get_coupled_files(file)
+                hotspot["coupled_files"] = len(coupled_files)
+
+            hotspots.append(hotspot)
+
+        # Sort hotspots by risk score
+        hotspots.sort(key=lambda x: x["risk_score"], reverse=True)
+
+        logger.info(f"Identified {len(hotspots)} hotspots")
+
+        return hotspots
+
+    def generate_report(self, output_path: Union[str, Path],
+                        template: str = "default") -> None:
+        """
+        Generate a human-readable report of analysis results.
+
+        Args:
+            output_path: Path to save the report to
+            template: Report template to use
+        """
+        logger.info(f"Generating report using {template} template")
+
+        # Ensure output directory exists
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Perform all analyses if not already done
+        if not self.results:
+            logger.warning("No analysis results found, running comprehensive analysis")
+            self.analyze_all()
+
+        # Generate HTML report
+        if template == "default":
+            self._generate_default_report(output_path)
+        else:
+            logger.warning(f"Unknown template: {template}, falling back to default")
+            self._generate_default_report(output_path)
+
+        logger.info(f"Report generated at {output_path}")
+
+    def _generate_default_report(self, output_path: Path) -> None:
+        """
+        Generate default HTML report.
+
+        Args:
+            output_path: Path to save the report to
+        """
+        # Basic HTML report template
+        html_start = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>REPD Analysis Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 30px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #3498db; margin-top: 30px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .risk-high { color: #e74c3c; }
+                .risk-medium { color: #f39c12; }
+                .risk-low { color: #27ae60; }
+                .summary { background-color: #eef; padding: 15px; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>REPD Analysis Report</h1>
+        """
+
+        repo_name = self.repository.get_name()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        html_summary = f"""
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Repository:</strong> {repo_name}</p>
+                <p><strong>Analysis Date:</strong> {timestamp}</p>
+        """
+
+        # Add summary statistics
+        if "risk_categories" in self.results:
+            risk_categories = self.results["risk_categories"]
+            html_summary += f"""
+                <p><strong>High Risk Files:</strong> {len(risk_categories['high_risk'])}</p>
+                <p><strong>Medium Risk Files:</strong> {len(risk_categories['medium_risk'])}</p>
+                <p><strong>Low Risk Files:</strong> {len(risk_categories['low_risk'])}</p>
+            """
+
+        if "structure" in self.results:
+            structure = self.results["structure"]
+            html_summary += f"""
+                <p><strong>Total Files:</strong> {structure.get('file_count', 'N/A')}</p>
+                <p><strong>Dependencies:</strong> {structure.get('edge_count', 'N/A')}</p>
+            """
+
+        html_summary += """
+            </div>
+        """
+
+        # Top high risk files
+        html_risk = """
+            <h2>Top High Risk Files</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Risk Score</th>
+                    <th>Highest Risk Factor</th>
+                </tr>
+        """
+
+        # Add risk data if available
+        if "risk_scores" in self.results and "highest_risk_factors" in self.results:
+            risk_scores = sorted(self.results["risk_scores"].items(),
+                                 key=lambda x: x[1], reverse=True)[:20]  # Top 20
+
+            highest_factors = self.results["highest_risk_factors"]
+
+            for file, score in risk_scores:
+                risk_class = "risk-high" if score >= 0.7 else \
+                    ("risk-medium" if score >= 0.4 else "risk-low")
+
+                factor = highest_factors.get(file, {}).get("factor", "unknown")
+                factor_value = highest_factors.get(file, {}).get("value", 0)
+
+                html_risk += f"""
+                    <tr>
+                        <td>{file}</td>
+                        <td class="{risk_class}">{score:.2f}</td>
+                        <td>{factor} ({factor_value:.2f})</td>
+                    </tr>
+                """
+
+        html_risk += """
+            </table>
+        """
+
+        # Entry points
+        html_entry_points = """
+            <h2>Key Entry Points</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Confidence</th>
+                </tr>
+        """
+
+        # Add entry point data if available
+        if "entry_points" in self.results:
+            entry_points = sorted(self.results["entry_points"].items(),
+                                  key=lambda x: x[1], reverse=True)[:10]  # Top 10
+
+            for file, score in entry_points:
+                if score < 0.5:
+                    continue  # Skip low confidence entry points
+
+                html_entry_points += f"""
+                    <tr>
+                        <td>{file}</td>
+                        <td>{score:.2f}</td>
+                    </tr>
+                """
+
+        html_entry_points += """
+            </table>
+        """
+
+        # Coupled files
+        html_coupled = """
+            <h2>Highly Coupled Files</h2>
+            <p>Files that frequently change together may indicate hidden dependencies.</p>
+            <table>
+                <tr>
+                    <th>File 1</th>
+                    <th>File 2</th>
+                    <th>Coupling Strength</th>
+                </tr>
+        """
+
+        # Add coupling data if available
+        if "high_coupling_pairs" in self.results:
+            high_coupling_pairs = self.results["high_coupling_pairs"][:15]  # Top 15
+
+            for file1, file2, strength in high_coupling_pairs:
+                html_coupled += f"""
+                    <tr>
+                        <td>{file1}</td>
+                        <td>{file2}</td>
+                        <td>{strength:.2f}</td>
+                    </tr>
+                """
+
+        html_coupled += """
+            </table>
+        """
+
+        # Central files
+        html_central = """
+            <h2>Central Files</h2>
+            <p>Files with high centrality are architectural hotspots.</p>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Centrality</th>
+                </tr>
+        """
+
+        # Add centrality data if available
+        centrality = {}
+        if "structure" in self.results and "central_files" in self.results["structure"]:
+            centrality = self.results["structure"]["central_files"]
+        elif hasattr(self.structure_mapper, "centrality_scores"):
+            centrality = self.structure_mapper.centrality_scores
+
+        if centrality:
+            central_files = sorted(centrality.items(),
+                                   key=lambda x: x[1], reverse=True)[:10]  # Top 10
+
+            for file, score in central_files:
+                html_central += f"""
+                    <tr>
+                        <td>{file}</td>
+                        <td>{score:.2f}</td>
+                    </tr>
+                """
+
+        html_central += """
+            </table>
+        """
+
+        # End of HTML
+        html_end = """
+        </body>
+        </html>
+        """
+
+        # Combine all sections
+        html_content = (html_start + html_summary + html_risk +
+                        html_entry_points + html_coupled + html_central + html_end)
+
+        # Write to file
+        with open(output_path, 'w') as f:
+            f.write(html_content)
+
+    def _prepare_for_serialization(self, data: Any) -> Any:
+        """
+        Prepare data for JSON serialization by converting non-serializable objects.
+
+        Args:
+            data: Data to prepare
+
+        Returns:
+            Serializable version of the data
+        """
+        if isinstance(data, dict):
+            return {k: self._prepare_for_serialization(v) for k, v in data.items()}
+
+        elif isinstance(data, list):
+            return [self._prepare_for_serialization(item) for item in data]
+
+        elif isinstance(data, set):
+            return list(data)
+
+        elif isinstance(data, nx.Graph) or isinstance(data, nx.DiGraph):
+            # Convert networkx graph to adjacency list
+            return {
+                "nodes": list(data.nodes()),
+                "edges": [(u, v, dict(attrs)) for u, v, attrs in data.edges(data=True)]
+            }
+
+        elif isinstance(data, datetime):
+            return data.isoformat()
+
+        elif hasattr(data, "__dict__"):
+            # Convert custom objects to dictionaries
+            return {k: self._prepare_for_serialization(v)
+                    for k, v in data.__dict__.items()
+                    if not k.startswith("_")}
+
+        else:
+            return data

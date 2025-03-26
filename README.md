@@ -90,8 +90,10 @@ REPDPrototype/
 │   ├── __init__.py                # Package initialization
 │   ├── cli.py                     # Command-line interface
 │   ├── model.py                   # Main REPD model class
-│   ├── entry_point_analyzer.py    # Repository entry point detection
+│   ├── entry_point_analyzer.py    # Repository entry point analysis
+│   ├── entry_point_detector.py    # Repository entry point detection
 │   ├── change_coupling.py         # Change coupling analysis
+│   ├── change_coupling_analyzer.py# Change coupling analysis helper
 │   ├── developer_activity.py      # Developer activity tracking
 │   ├── risk_calculator.py         # Defect risk calculation
 │   ├── repository.py              # Repository access and analysis

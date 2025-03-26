@@ -1,376 +1,476 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Defect Risk Calculator for REPD Model
+Risk Calculator Module for REPD Model
 
-This module provides risk calculation functionality based on multiple factors
-including entry point status, change coupling, developer activity, and
-path complexity. It combines these factors to produce an overall risk score.
+This module calculates risk scores for files in a repository based on
+various metrics including complexity, churn, coupling, and structural importance.
 
 Author: anirudhsengar
 """
 
+import json
 import logging
-import math
-from typing import Dict, List, Tuple, Optional, Any
+import os
+from collections import defaultdict
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Set, Tuple, Optional, Any, Union
 
 import numpy as np
+
+from repd.repository import Repository
+from repd.structure_mapper import StructureMapper
 
 logger = logging.getLogger(__name__)
 
 
-class DefectRiskCalculator:
+class RiskCalculator:
     """
-    Calculates defect risk scores based on multiple input factors.
+    Calculates risk scores for files in a repository based on multiple metrics.
 
-    This class combines various risk factors from the REPD model components
-    to produce an overall defect risk score for each file. It provides
-    flexible weighting options and risk categorization.
+    Risk calculation considers code complexity, change frequency (churn),
+    coupling with other files, structural importance, and file age.
     """
 
-    # Risk category thresholds
-    RISK_CATEGORIES = {
-        "very_high": 0.8,
-        "high": 0.6,
-        "medium": 0.4,
-        "low": 0.2,
-        "very_low": 0.0
-    }
-
-    def __init__(self):
-        """Initialize the risk calculator."""
-        pass
-
-    def calculate_risk(
-            self,
-            entry_point_score: float,
-            coupling_score: float,
-            dev_expertise_score: float,
-            path_complexity_score: float,
-            entry_point_weight: float = 0.5,
-            coupling_weight: float = 0.3,
-            dev_expertise_weight: float = 0.3,
-            path_complexity_weight: float = 0.2
-    ) -> float:
+    def __init__(self, repository: Repository, structure_mapper: StructureMapper):
         """
-        Calculate overall risk score based on multiple factors.
+        Initialize the risk calculator.
 
         Args:
-            entry_point_score: Score indicating entry point importance (0.0-1.0)
-            coupling_score: Score indicating change coupling risk (0.0-1.0)
-            dev_expertise_score: Score indicating developer expertise risk (0.0-1.0)
-            path_complexity_score: Score indicating path complexity risk (0.0-1.0)
-            entry_point_weight: Weight for entry point factor
-            coupling_weight: Weight for coupling factor
-            dev_expertise_weight: Weight for developer expertise factor
-            path_complexity_weight: Weight for path complexity factor
-
-        Returns:
-            Overall normalized risk score (0.0-1.0)
+            repository: Repository interface to analyze
+            structure_mapper: Structure mapper with dependency information
         """
-        # Validate inputs
-        entry_point_score = self._validate_score(entry_point_score)
-        coupling_score = self._validate_score(coupling_score)
-        dev_expertise_score = self._validate_score(dev_expertise_score)
-        path_complexity_score = self._validate_score(path_complexity_score)
+        self.repository = repository
+        self.structure_mapper = structure_mapper
+        self.risk_scores = {}  # Dictionary mapping file paths to risk scores
+        self.risk_factors = {}  # Dictionary mapping file paths to risk factor scores
 
-        # Normalize weights to sum to 1.0
-        total_weight = (entry_point_weight + coupling_weight +
-                        dev_expertise_weight + path_complexity_weight)
-
-        if total_weight == 0:
-            # Default to equal weights if all weights are zero
-            entry_point_weight = coupling_weight = dev_expertise_weight = path_complexity_weight = 0.25
-        else:
-            # Normalize weights
-            entry_point_weight /= total_weight
-            coupling_weight /= total_weight
-            dev_expertise_weight /= total_weight
-            path_complexity_weight /= total_weight
-
-        # Calculate weighted sum
-        risk_score = (
-                entry_point_weight * entry_point_score +
-                coupling_weight * coupling_score +
-                dev_expertise_weight * dev_expertise_score +
-                path_complexity_weight * path_complexity_score
-        )
-
-        # Apply non-linear risk adjustment
-        # This emphasizes higher risk scores
-        adjusted_risk = self._adjust_risk_curve(risk_score)
-
-        return adjusted_risk
-
-    def categorize_risk(self, risk_score: float) -> str:
+    def calculate_risk_scores(self, weights: Dict[str, float] = None) -> Dict[str, float]:
         """
-        Categorize a risk score into one of the predefined categories.
+        Calculate risk scores for all code files in the repository.
 
         Args:
-            risk_score: Risk score (0.0-1.0)
+            weights: Dictionary mapping risk factors to their weights
+                    (complexity, churn, coupling, structural, age)
 
         Returns:
-            Risk category: 'very_high', 'high', 'medium', 'low', 'very_low'
+            Dictionary mapping file paths to risk scores
         """
-        # Validate input
-        risk_score = self._validate_score(risk_score)
+        logger.info("Calculating risk scores")
 
-        # Determine category based on thresholds
-        for category, threshold in sorted(
-                self.RISK_CATEGORIES.items(),
-                key=lambda x: x[1],
-                reverse=True
-        ):
-            if risk_score >= threshold:
-                return category
-
-        # Default case (should never happen if thresholds are set correctly)
-        return "very_low"
-
-    def calculate_combined_risk(
-            self,
-            risks: Dict[str, float],
-            weights: Optional[Dict[str, float]] = None
-    ) -> float:
-        """
-        Calculate a combined risk score from multiple component risks.
-
-        Args:
-            risks: Dictionary mapping risk factors to scores
-            weights: Optional dictionary mapping risk factors to weights
-
-        Returns:
-            Combined risk score (0.0-1.0)
-        """
-        if not risks:
-            return 0.0
-
-        # Use equal weights if not specified
+        # Default weights if not specified
         if weights is None:
-            weights = {factor: 1.0 / len(risks) for factor in risks}
-
-        # Normalize weights to sum to 1.0
-        total_weight = sum(weights.values())
-        if total_weight > 0:
-            norm_weights = {
-                factor: weight / total_weight
-                for factor, weight in weights.items()
+            weights = {
+                "complexity": 0.25,
+                "churn": 0.25,
+                "coupling": 0.2,
+                "structural": 0.2,
+                "age": 0.1
             }
-        else:
-            # Equal weights if sum is zero
-            norm_weights = {factor: 1.0 / len(risks) for factor in risks}
 
-        # Calculate weighted sum
-        weighted_sum = sum(
-            risks.get(factor, 0.0) * norm_weights.get(factor, 0.0)
-            for factor in set(risks.keys()).union(weights.keys())
-        )
+        # Normalize weights to ensure they sum to 1
+        total_weight = sum(weights.values())
+        weights = {k: v / total_weight for k, v in weights.items()}
 
-        # Validate final score
-        return self._validate_score(weighted_sum)
+        # Get all code files
+        code_files = [f for f in self.repository.get_all_files()
+                      if self.repository.is_code_file(f)]
 
-    def risk_factors_contribution(
-            self,
-            entry_point_score: float,
-            coupling_score: float,
-            dev_expertise_score: float,
-            path_complexity_score: float,
-            entry_point_weight: float = 0.5,
-            coupling_weight: float = 0.3,
-            dev_expertise_weight: float = 0.3,
-            path_complexity_weight: float = 0.2
-    ) -> Dict[str, Dict[str, float]]:
+        logger.debug(f"Calculating risk for {len(code_files)} files")
+
+        # Calculate individual risk factors
+        complexity_scores = self._analyze_complexity()
+        churn_scores = self._analyze_churn()
+        coupling_scores = self._analyze_coupling()
+        structural_scores = self._analyze_structural_importance()
+        age_scores = self._analyze_age()
+
+        # Calculate combined risk scores
+        risk_scores = {}
+        risk_factors = {}
+
+        for file in code_files:
+            # Get individual factor scores, default to 0 if not found
+            complexity = complexity_scores.get(file, 0.0)
+            churn = churn_scores.get(file, 0.0)
+            coupling = coupling_scores.get(file, 0.0)
+            structural = structural_scores.get(file, 0.0)
+            age = age_scores.get(file, 0.0)
+
+            # Calculate weighted sum
+            risk = (
+                    weights["complexity"] * complexity +
+                    weights["churn"] * churn +
+                    weights["coupling"] * coupling +
+                    weights["structural"] * structural +
+                    weights["age"] * age
+            )
+
+            # Store results
+            risk_scores[file] = risk
+            risk_factors[file] = {
+                "complexity": complexity,
+                "churn": churn,
+                "coupling": coupling,
+                "structural": structural,
+                "age": age
+            }
+
+        self.risk_scores = risk_scores
+        self.risk_factors = risk_factors
+
+        logger.info(f"Calculated risk scores for {len(risk_scores)} files")
+
+        return risk_scores
+
+    def _analyze_complexity(self) -> Dict[str, float]:
         """
-        Calculate contribution of each risk factor to the overall score.
-
-        Args:
-            entry_point_score: Score indicating entry point importance (0.0-1.0)
-            coupling_score: Score indicating change coupling risk (0.0-1.0)
-            dev_expertise_score: Score indicating developer expertise risk (0.0-1.0)
-            path_complexity_score: Score indicating path complexity risk (0.0-1.0)
-            entry_point_weight: Weight for entry point factor
-            coupling_weight: Weight for coupling factor
-            dev_expertise_weight: Weight for developer expertise factor
-            path_complexity_weight: Weight for path complexity factor
+        Analyze code complexity for all files.
 
         Returns:
-            Dictionary with raw values, normalized weights, weighted scores
+            Dictionary mapping file paths to normalized complexity scores
         """
-        # Validate inputs
-        entry_point_score = self._validate_score(entry_point_score)
-        coupling_score = self._validate_score(coupling_score)
-        dev_expertise_score = self._validate_score(dev_expertise_score)
-        path_complexity_score = self._validate_score(path_complexity_score)
+        logger.debug("Analyzing code complexity")
 
-        # Normalize weights
-        total_weight = (entry_point_weight + coupling_weight +
-                        dev_expertise_weight + path_complexity_weight)
+        # Get all code files
+        code_files = [f for f in self.repository.get_all_files()
+                      if self.repository.is_code_file(f)]
 
-        if total_weight == 0:
-            norm_entry_weight = norm_coupling_weight = 0.25
-            norm_expertise_weight = norm_path_weight = 0.25
+        # Calculate complexity for each file
+        raw_scores = {}
+
+        for file in code_files:
+            # Get file content
+            content = self.repository.get_file_content(file)
+            if not content:
+                continue
+
+            # Calculate complexity using repository helper method
+            complexity = self.repository.calculate_complexity(content)
+
+            # Get file size as an additional complexity factor
+            size = self.repository.get_file_size(file)
+
+            # Combined score with more weight to cyclomatic complexity
+            raw_scores[file] = (0.7 * complexity) + (0.3 * min(1.0, size / 10000))
+
+        # Normalize scores to 0-1 range
+        return self._normalize_scores(raw_scores)
+
+    def _analyze_churn(self) -> Dict[str, float]:
+        """
+        Analyze code churn (frequency of changes) for all files.
+
+        Returns:
+            Dictionary mapping file paths to normalized churn scores
+        """
+        logger.debug("Analyzing code churn")
+
+        # Get commit history
+        commits = self.repository.get_commit_history()
+
+        # Count changes per file
+        change_count = defaultdict(int)
+        recent_change_count = defaultdict(int)
+
+        # Threshold for recent changes (last 30 days)
+        recent_threshold = datetime.now() - timedelta(days=30)
+
+        for commit in commits:
+            for file in commit.modified_files:
+                change_count[file] += 1
+
+                # Check if change is recent
+                if hasattr(commit, 'date') and isinstance(commit.date, datetime):
+                    if commit.date >= recent_threshold:
+                        recent_change_count[file] += 1
+
+        # Calculate churn scores
+        raw_scores = {}
+
+        for file, count in change_count.items():
+            # Consider both total changes and recent changes
+            total_score = min(1.0, count / 10)  # Cap at 10 changes for normalization
+            recent_score = min(1.0, recent_change_count[file] / 5)  # Cap at 5 recent changes
+
+            # Combined score with more weight to recent changes
+            raw_scores[file] = (0.4 * total_score) + (0.6 * recent_score)
+
+        # Normalize scores to 0-1 range
+        return self._normalize_scores(raw_scores)
+
+    def _analyze_coupling(self) -> Dict[str, float]:
+        """
+        Analyze coupling with other files.
+
+        Returns:
+            Dictionary mapping file paths to normalized coupling scores
+        """
+        logger.debug("Analyzing code coupling")
+
+        # Use structure mapper's import map if available
+        if hasattr(self.structure_mapper, 'import_map') and self.structure_mapper.import_map:
+            import_map = self.structure_mapper.import_map
         else:
-            norm_entry_weight = entry_point_weight / total_weight
-            norm_coupling_weight = coupling_weight / total_weight
-            norm_expertise_weight = dev_expertise_weight / total_weight
-            norm_path_weight = path_complexity_weight / total_weight
+            # If no import map, return empty scores
+            return {}
 
-        # Calculate weighted scores
-        weighted_entry = entry_point_score * norm_entry_weight
-        weighted_coupling = coupling_score * norm_coupling_weight
-        weighted_expertise = dev_expertise_score * norm_expertise_weight
-        weighted_path = path_complexity_score * norm_path_weight
+        # Calculate coupling scores based on number of imports/dependents
+        raw_scores = {}
 
-        # Calculate overall risk
-        total_risk = self.calculate_risk(
-            entry_point_score,
-            coupling_score,
-            dev_expertise_score,
-            path_complexity_score,
-            entry_point_weight,
-            coupling_weight,
-            dev_expertise_weight,
-            path_complexity_weight
+        for file, imports in import_map.items():
+            # Score based on number of imports
+            import_count = len(imports)
+
+            # Count files that import this file (dependents)
+            dependent_count = sum(1 for f, deps in import_map.items()
+                                  if file in deps)
+
+            # Combined score - files with many dependents and many imports
+            # are often more risky
+            raw_scores[file] = (0.3 * min(1.0, import_count / 10)) + \
+                               (0.7 * min(1.0, dependent_count / 5))
+
+        # Normalize scores to 0-1 range
+        return self._normalize_scores(raw_scores)
+
+    def _analyze_structural_importance(self) -> Dict[str, float]:
+        """
+        Analyze structural importance of files in the codebase.
+
+        Returns:
+            Dictionary mapping file paths to normalized structural importance scores
+        """
+        logger.debug("Analyzing structural importance")
+
+        # Get centrality scores if available
+        centrality_files = self.structure_mapper.get_central_files()
+        if not centrality_files:
+            return {}
+
+        # Convert to dictionary
+        centrality = dict(centrality_files)
+
+        # Use centrality directly as the structural importance score
+        # It should already be normalized by the structure mapper
+        return centrality
+
+    def _analyze_age(self) -> Dict[str, float]:
+        """
+        Analyze file age and maturity.
+
+        Returns:
+            Dictionary mapping file paths to normalized age risk scores
+        """
+        logger.debug("Analyzing file age")
+
+        # Get all code files
+        code_files = [f for f in self.repository.get_all_files()
+                      if self.repository.is_code_file(f)]
+
+        # Calculate age for each file
+        raw_scores = {}
+        now = datetime.now()
+
+        for file in code_files:
+            try:
+                creation_date = self.repository.get_file_creation_date(file)
+
+                if isinstance(creation_date, datetime):
+                    # Calculate age in days
+                    age_days = (now - creation_date).days
+
+                    # Risk is higher for very new files (< 30 days)
+                    # and somewhat elevated for very old files (> 365 days)
+                    if age_days < 30:
+                        # New files: risk decreases as they age from 1 to 0.5
+                        raw_scores[file] = 1.0 - (0.5 * age_days / 30)
+                    elif age_days > 365:
+                        # Old files: risk increases slightly with age from 0.3 to 0.5
+                        raw_scores[file] = 0.3 + (0.2 * min(1.0, (age_days - 365) / 730))
+                    else:
+                        # Stable age range: low risk
+                        raw_scores[file] = 0.3
+            except:
+                # If date can't be determined, assume medium risk
+                raw_scores[file] = 0.5
+
+        # Normalize scores to 0-1 range
+        return self._normalize_scores(raw_scores)
+
+    def get_risk_scores(self, top_n: int = None) -> List[Tuple[str, float]]:
+        """
+        Get calculated risk scores, optionally limited to top N.
+
+        Args:
+            top_n: Number of highest-risk files to return
+
+        Returns:
+            List of (file_path, risk_score) tuples, sorted by risk (highest first)
+        """
+        # Sort files by risk score (descending)
+        sorted_scores = sorted(
+            self.risk_scores.items(),
+            key=lambda x: x[1],
+            reverse=True
         )
 
-        # Calculate percentage contributions
-        if total_risk > 0:
-            entry_contribution = (weighted_entry / total_risk) * 100
-            coupling_contribution = (weighted_coupling / total_risk) * 100
-            expertise_contribution = (weighted_expertise / total_risk) * 100
-            path_contribution = (weighted_path / total_risk) * 100
-        else:
-            # Equal contribution if total risk is zero
-            entry_contribution = coupling_contribution = 25.0
-            expertise_contribution = path_contribution = 25.0
+        # Limit to top N if specified
+        if top_n is not None:
+            return sorted_scores[:top_n]
 
-        return {
-            "raw_scores": {
-                "entry_point": entry_point_score,
-                "coupling": coupling_score,
-                "dev_expertise": dev_expertise_score,
-                "path_complexity": path_complexity_score
-            },
-            "norm_weights": {
-                "entry_point": norm_entry_weight,
-                "coupling": norm_coupling_weight,
-                "dev_expertise": norm_expertise_weight,
-                "path_complexity": norm_path_weight
-            },
-            "weighted_scores": {
-                "entry_point": weighted_entry,
-                "coupling": weighted_coupling,
-                "dev_expertise": weighted_expertise,
-                "path_complexity": weighted_path
-            },
-            "contributions": {
-                "entry_point": entry_contribution,
-                "coupling": coupling_contribution,
-                "dev_expertise": expertise_contribution,
-                "path_complexity": path_contribution
-            },
-            "total_risk": total_risk
+        return sorted_scores
+
+    def get_risk_factors(self, file_path: str) -> Dict[str, float]:
+        """
+        Get risk factors for a specific file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Dictionary mapping factor names to scores
+        """
+        return self.risk_factors.get(file_path, {})
+
+    def get_all_risk_factors(self) -> Dict[str, Dict[str, float]]:
+        """
+        Get risk factors for all files.
+
+        Returns:
+            Dictionary mapping file paths to factor dictionaries
+        """
+        return self.risk_factors
+
+    def export_risk_data(self, output_file: str) -> None:
+        """
+        Export risk data to a JSON file.
+
+        Args:
+            output_file: Path to the output file
+        """
+        if not self.risk_scores:
+            logger.warning("No risk scores to export")
+            return
+
+        # Prepare data for export
+        data = {
+            "risk_scores": self.risk_scores,
+            "risk_factors": self.risk_factors,
+            "metadata": {
+                "repository": self.repository.get_name(),
+                "timestamp": datetime.now().isoformat(),
+                "top_risks": [
+                    {"file": file, "score": score}
+                    for file, score in self.get_risk_scores(top_n=10)
+                ]
+            }
         }
 
-    def _validate_score(self, score: float) -> float:
+        # Write to file
+        with open(output_file, 'w') as f:
+            json.dump(data, f, indent=2)
+
+        logger.info(f"Exported risk data to {output_file}")
+
+    def import_risk_data(self, input_file: str) -> None:
         """
-        Ensure a score is within valid range (0.0-1.0).
+        Import risk data from a JSON file.
 
         Args:
-            score: Input score to validate
-
-        Returns:
-            Validated score within range (0.0-1.0)
+            input_file: Path to the input file
         """
-        return max(0.0, min(1.0, float(score)))
+        try:
+            with open(input_file, 'r') as f:
+                data = json.load(f)
 
-    def _adjust_risk_curve(self, risk_score: float) -> float:
+            self.risk_scores = data.get("risk_scores", {})
+            self.risk_factors = data.get("risk_factors", {})
+
+            logger.info(f"Imported risk data from {input_file}")
+
+        except Exception as e:
+            logger.error(f"Error importing risk data: {str(e)}")
+
+    def _normalize_scores(self, raw_scores: Dict[str, float]) -> Dict[str, float]:
         """
-        Apply a non-linear adjustment to the risk curve.
-
-        This applies a sigmoid-like function to emphasize medium-to-high risks
-        and de-emphasize very low risks.
+        Normalize scores to a 0-1 range.
 
         Args:
-            risk_score: Linear risk score (0.0-1.0)
+            raw_scores: Dictionary mapping file paths to raw scores
 
         Returns:
-            Adjusted risk score (0.0-1.0)
+            Dictionary mapping file paths to normalized scores
         """
-        # Apply sigmoid-like function centered at 0.5
-        # This makes mid-range risks more pronounced
-        adjusted = 1.0 / (1.0 + math.exp(-10 * (risk_score - 0.5)))
+        if not raw_scores:
+            return {}
 
-        # Blend linear and sigmoid components for a more balanced curve
-        blended = 0.7 * adjusted + 0.3 * risk_score
+        # Find min and max values
+        values = list(raw_scores.values())
+        min_val = min(values)
+        max_val = max(values)
 
-        return self._validate_score(blended)
+        # If all values are the same, return constant score
+        if min_val == max_val:
+            return {k: 0.5 for k in raw_scores.keys()}
 
+        # Normalize to 0-1 range
+        normalized = {}
+        range_val = max_val - min_val
 
-def normalize_risk_scores(risk_scores: Dict[str, float]) -> Dict[str, float]:
-    """
-    Normalize risk scores to maintain relative ordering but use full range.
+        for file, score in raw_scores.items():
+            normalized[file] = (score - min_val) / range_val
 
-    Args:
-        risk_scores: Dictionary mapping items to risk scores
+        return normalized
 
-    Returns:
-        Dictionary with normalized risk scores
-    """
-    # Handle empty or single-item dictionaries
-    if not risk_scores:
-        return {}
+    def get_highest_risk_factors(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Identify the highest risk factor for each file.
 
-    if len(risk_scores) == 1:
-        return {k: 0.5 for k, v in risk_scores.items()}
+        Returns:
+            Dictionary mapping file paths to highest factor information
+        """
+        result = {}
 
-    # Get min and max values
-    min_val = min(risk_scores.values())
-    max_val = max(risk_scores.values())
+        for file, factors in self.risk_factors.items():
+            # Find the factor with the highest score
+            highest_factor = max(factors.items(), key=lambda x: x[1])
+            factor_name, factor_value = highest_factor
 
-    # If all values are the same, return mid-range values
-    if min_val == max_val:
-        return {k: 0.5 for k, v in risk_scores.items()}
+            result[file] = {
+                "factor": factor_name,
+                "value": factor_value
+            }
 
-    # Normalize to range [0.1, 0.9] to avoid extremes
-    normalized = {}
-    range_val = max_val - min_val
+        return result
 
-    for k, v in risk_scores.items():
-        normalized[k] = 0.1 + 0.8 * ((v - min_val) / range_val)
+    def classify_risk(self, high_threshold: float = 0.7,
+                      medium_threshold: float = 0.4) -> Dict[str, List[str]]:
+        """
+        Classify files into risk categories based on thresholds.
 
-    return normalized
+        Args:
+            high_threshold: Minimum score for high risk
+            medium_threshold: Minimum score for medium risk
 
+        Returns:
+            Dictionary mapping risk levels to lists of files
+        """
+        high_risk = []
+        medium_risk = []
+        low_risk = []
 
-if __name__ == "__main__":
-    # Example usage
-    calculator = DefectRiskCalculator()
+        for file, score in self.risk_scores.items():
+            if score >= high_threshold:
+                high_risk.append(file)
+            elif score >= medium_threshold:
+                medium_risk.append(file)
+            else:
+                low_risk.append(file)
 
-    # Example risk factors
-    entry_point = 0.8  # High entry point score
-    coupling = 0.6  # Medium-high coupling
-    expertise = 0.4  # Medium developer expertise risk
-    complexity = 0.3  # Low-medium path complexity
-
-    # Calculate risk with default weights
-    risk = calculator.calculate_risk(
-        entry_point_score=entry_point,
-        coupling_score=coupling,
-        dev_expertise_score=expertise,
-        path_complexity_score=complexity
-    )
-
-    print(f"Overall risk score: {risk:.4f}")
-    print(f"Risk category: {calculator.categorize_risk(risk)}")
-
-    # Calculate factor contributions
-    contributions = calculator.risk_factors_contribution(
-        entry_point_score=entry_point,
-        coupling_score=coupling,
-        dev_expertise_score=expertise,
-        path_complexity_score=complexity
-    )
-
-    print("\nRisk factor contributions:")
-    for factor, contribution in contributions["contributions"].items():
-        print(f"  {factor}: {contribution:.2f}%")
+        return {
+            "high_risk": high_risk,
+            "medium_risk": medium_risk,
+            "low_risk": low_risk
+        }
