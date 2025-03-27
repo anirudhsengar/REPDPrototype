@@ -37,7 +37,7 @@ except PackageNotFoundError:
 from repd.model import REPDModel
 from repd.entry_point_analyzer import EntryPointIdentifier
 from repd.repository import Repository
-from repd.risk_calculator import DefectRiskCalculator
+from repd.risk_calculator import RiskCalculator
 
 __all__ = [
     "REPDModel",

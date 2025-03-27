@@ -1,0 +1,259 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>REPD Analysis Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 30px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #3498db; margin-top: 30px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .risk-high { color: #e74c3c; }
+                .risk-medium { color: #f39c12; }
+                .risk-low { color: #27ae60; }
+                .summary { background-color: #eef; padding: 15px; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>REPD Analysis Report</h1>
+        
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Repository:</strong> buildship</p>
+                <p><strong>Analysis Date:</strong> 2025-03-26 22:11:44</p>
+        
+                <p><strong>High Risk Files:</strong> 0</p>
+                <p><strong>Medium Risk Files:</strong> 24</p>
+                <p><strong>Low Risk Files:</strong> 657</p>
+            
+                <p><strong>Total Files:</strong> 500</p>
+                <p><strong>Dependencies:</strong> 81</p>
+            
+            </div>
+        
+            <h2>Top High Risk Files</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Risk Score</th>
+                    <th>Highest Risk Factor</th>
+                </tr>
+        
+                    <tr>
+                        <td>org.eclipse.buildship.oomph/src/main/java-generated/org/eclipse/buildship/oomph/impl/GradleImportTaskImpl.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/util/gradle/GradleVersion.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.ui/src/main/java/org/eclipse/buildship/ui/internal/util/gradle/GradleDistributionViewModel.java</td>
+                        <td class="risk-medium">0.49</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.oomph.edit/src/main/java-generated/org/eclipse/buildship/oomph/provider/GradleImportTaskItemProvider.java</td>
+                        <td class="risk-medium">0.47</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/configuration/DefaultConfigurationManager.java</td>
+                        <td class="risk-medium">0.46</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/workspace/DefaultWorkspaceOperations.java</td>
+                        <td class="risk-medium">0.46</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/launch/TestExecutionTarget.java</td>
+                        <td class="risk-medium">0.45</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/launch/GradleClasspathProvider.java</td>
+                        <td class="risk-medium">0.45</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/DefaultGradleBuild.java</td>
+                        <td class="risk-medium">0.45</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/workspace/GradleClasspathContainerRuntimeClasspathEntryResolver.java</td>
+                        <td class="risk-medium">0.45</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/launch/DefaultExternalLaunchConfigurationManager.java</td>
+                        <td class="risk-medium">0.45</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/util/gradle/CompatEclipseProject.java</td>
+                        <td class="risk-medium">0.44</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/workspace/WtpConfigurator.java</td>
+                        <td class="risk-medium">0.43</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>buildSrc/src/main/groovy/eclipsebuild/testing/EclipseTestExecuter.java</td>
+                        <td class="risk-medium">0.43</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/util/gradle/PublishedGradleVersions.java</td>
+                        <td class="risk-medium">0.42</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/configuration/PreferenceStore.java</td>
+                        <td class="risk-medium">0.42</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.oomph/src/main/java-generated/org/eclipse/buildship/oomph/GradleImportPackage.java</td>
+                        <td class="risk-medium">0.42</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/util/progress/ProblemsReportingProgressListener.java</td>
+                        <td class="risk-medium">0.42</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/workspace/SourceFolderUpdater.java</td>
+                        <td class="risk-medium">0.42</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/extension/InternalProjectConfigurator.java</td>
+                        <td class="risk-medium">0.41</td>
+                        <td>coupling (1.00)</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Key Entry Points</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Confidence</th>
+                </tr>
+        
+                    <tr>
+                        <td>org.eclipse.buildship.gradleprop.ls/src/main/java/org/eclipse/buildship/gradleprop/ls/GradlePropertiesLanguageServerLauncher.java</td>
+                        <td>0.75</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.github/scripts/generate_eclipse_versions.py</td>
+                        <td>0.70</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Highly Coupled Files</h2>
+            <p>Files that frequently change together may indicate hidden dependencies.</p>
+            <table>
+                <tr>
+                    <th>File 1</th>
+                    <th>File 2</th>
+                    <th>Coupling Strength</th>
+                </tr>
+        
+            </table>
+        
+            <h2>Central Files</h2>
+            <p>Files with high centrality are architectural hotspots.</p>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Centrality</th>
+                </tr>
+        
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/event/Event.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/configuration/Test.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/workspace/BaseProjectChangedEvent.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/GradleDistribution.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/ProjectConfigurator.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/launch/BaseLaunchRequestJob.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>buildSrc/src/main/groovy/eclipsebuild/testing/EclipseTestEvent.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/configuration/PreferenceStore.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/launch/LaunchConfigurationScope.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>org.eclipse.buildship.core/src/main/java/org/eclipse/buildship/core/internal/launch/TestExecutionTarget.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+            </table>
+        
+        </body>
+        </html>
+        

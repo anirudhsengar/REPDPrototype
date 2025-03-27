@@ -316,8 +316,15 @@ class LocalRepository(Repository):
         Args:
             path: Path to the local repository
         """
-        self.path = Path(path)
-        super().__init__(self.path.name)
+        # Convert path to Path object
+        path_obj = Path(path)
+
+        # Call parent constructor with name
+        super().__init__(path_obj.name)
+
+        # Set the path after super().__init__ to avoid being overwritten
+        self.path = path_obj
+
         logger.info(f"Initialized local repository at {self.path}")
 
     def get_all_files(self) -> List[str]:

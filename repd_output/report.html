@@ -1,0 +1,299 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>REPD Analysis Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 30px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #3498db; margin-top: 30px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .risk-high { color: #e74c3c; }
+                .risk-medium { color: #f39c12; }
+                .risk-low { color: #27ae60; }
+                .summary { background-color: #eef; padding: 15px; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>REPD Analysis Report</h1>
+        
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Repository:</strong> REPDPrototype</p>
+                <p><strong>Analysis Date:</strong> 2025-03-26 20:37:52</p>
+        
+                <p><strong>High Risk Files:</strong> 0</p>
+                <p><strong>Medium Risk Files:</strong> 153</p>
+                <p><strong>Low Risk Files:</strong> 6333</p>
+            
+                <p><strong>Total Files:</strong> 500</p>
+                <p><strong>Dependencies:</strong> 320</p>
+            
+            </div>
+        
+            <h2>Top High Risk Files</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Risk Score</th>
+                    <th>Highest Risk Factor</th>
+                </tr>
+        
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/tables/otBase.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/git/util.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/gitdb/util.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/git/objects/util.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/tables/otConverters.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/sfnt.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/joblib/_parallel_backends.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/joblib/_store_backends.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/dateutil/tz/tz.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/joblib/externals/loky/process_executor.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/joblib/externals/cloudpickle/cloudpickle.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/git/remote.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ufoLib/__init__.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/pens/ttGlyphPen.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ufoLib/glifLib.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/git/refs/symbolic.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/six.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/threadpoolctl.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/dateutil/rrule.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/dateutil/parser/_parser.py</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Key Entry Points</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Confidence</th>
+                </tr>
+        
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/pens/statisticsPen.py</td>
+                        <td>0.76</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/joblib/externals/loky/backend/popen_loky_posix.py</td>
+                        <td>0.75</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/pens/svgPathPen.py</td>
+                        <td>0.75</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/scaleUpem.py</td>
+                        <td>0.75</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/woff2.py</td>
+                        <td>0.75</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/threadpoolctl.py</td>
+                        <td>0.74</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/mtiLib/__init__.py</td>
+                        <td>0.74</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/cffLib/CFF2ToCFF.py</td>
+                        <td>0.74</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/__main__.py</td>
+                        <td>0.74</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/cffLib/CFFToCFF2.py</td>
+                        <td>0.74</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Highly Coupled Files</h2>
+            <p>Files that frequently change together may indicate hidden dependencies.</p>
+            <table>
+                <tr>
+                    <th>File 1</th>
+                    <th>File 2</th>
+                    <th>Coupling Strength</th>
+                </tr>
+        
+            </table>
+        
+            <h2>Central Files</h2>
+            <p>Files with high centrality are architectural hotspots.</p>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Centrality</th>
+                </tr>
+        
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/__init__.py</td>
+                        <td>0.08</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/pens/basePen.py</td>
+                        <td>0.02</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/ttLib/tables/otBase.py</td>
+                        <td>0.02</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/git/util.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/misc/testTools.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/pens/pointPen.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/pens/filterPen.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/gitdb/base.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/gitdb/util.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>.venv/Lib/site-packages/fontTools/misc/loggingTools.py</td>
+                        <td>0.01</td>
+                    </tr>
+                
+            </table>
+        
+        </body>
+        </html>
+        

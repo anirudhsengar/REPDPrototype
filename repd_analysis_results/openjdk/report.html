@@ -1,0 +1,299 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>REPD Analysis Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 30px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #3498db; margin-top: 30px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .risk-high { color: #e74c3c; }
+                .risk-medium { color: #f39c12; }
+                .risk-low { color: #27ae60; }
+                .summary { background-color: #eef; padding: 15px; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>REPD Analysis Report</h1>
+        
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Repository:</strong> openjdk</p>
+                <p><strong>Analysis Date:</strong> 2025-03-27 13:39:26</p>
+        
+                <p><strong>High Risk Files:</strong> 0</p>
+                <p><strong>Medium Risk Files:</strong> 103</p>
+                <p><strong>Low Risk Files:</strong> 58707</p>
+            
+                <p><strong>Total Files:</strong> 500</p>
+                <p><strong>Dependencies:</strong> 238</p>
+            
+            </div>
+        
+            <h2>Top High Risk Files</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Risk Score</th>
+                    <th>Highest Risk Factor</th>
+                </tr>
+        
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/Surface.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/Option.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/tests/text/TextTests.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/tests/ImageTests.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/tests/RenderTests.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/tests/iio/InputImageTests.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/tests/text/TextMeasureTests.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/Notepad/Notepad.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Composite/FadeAnim.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Mix/BezierScroller.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Paint/TextureAnim.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Transforms/SelectTx.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Transforms/TransformAnim.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/cldrconverter/LDMLParseHandler.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/cldrconverter/ResourceBundleGenerator.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/TableExample/TableSorter.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/ide/xcode/hotspot/src/classes/XcodeProjectMaker.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/cldrconverter/Bundle.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/cldrconverter/CLDRConverter.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/compileproperties/CompileProperties.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Key Entry Points</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Confidence</th>
+                </tr>
+        
+                    <tr>
+                        <td>make/langtools/tools/javacserver/Main.java</td>
+                        <td>0.86</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/charsetmapping/Main.java</td>
+                        <td>0.86</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/fixuppandoc/Main.java</td>
+                        <td>0.86</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/jdwpgen/Main.java</td>
+                        <td>0.86</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/langtools/tools/javacserver/server/Server.java</td>
+                        <td>0.81</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Mix/BezierScroller.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Mix/Stars3D.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Fonts/AllFonts.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Clipping/ClipAnim.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/demos/Paint/GradAnim.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Highly Coupled Files</h2>
+            <p>Files that frequently change together may indicate hidden dependencies.</p>
+            <table>
+                <tr>
+                    <th>File 1</th>
+                    <th>File 2</th>
+                    <th>Coupling Strength</th>
+                </tr>
+        
+            </table>
+        
+            <h2>Central Files</h2>
+            <p>Files with high centrality are architectural hotspots.</p>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Centrality</th>
+                </tr>
+        
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/Surface.java</td>
+                        <td>0.02</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/jdwpgen/AbstractSimpleTypeNode.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/SwingSet2/DemoModule.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/CustomControls.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/jdwpgen/Node.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/jdwpgen/AbstractNamedNode.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/AnimatingSurface.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>make/jdk/src/classes/build/tools/cldrconverter/AbstractLDMLHandler.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/jfc/J2Ddemo/java2d/AnimatingControlsSurface.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>src/demo/share/java2d/J2DBench/src/j2dbench/Option.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+            </table>
+        
+        </body>
+        </html>
+        

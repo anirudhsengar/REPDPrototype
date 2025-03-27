@@ -1,0 +1,299 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>REPD Analysis Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 30px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #3498db; margin-top: 30px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .risk-high { color: #e74c3c; }
+                .risk-medium { color: #f39c12; }
+                .risk-low { color: #27ae60; }
+                .summary { background-color: #eef; padding: 15px; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>REPD Analysis Report</h1>
+        
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Repository:</strong> openj9</p>
+                <p><strong>Analysis Date:</strong> 2025-03-26 22:35:36</p>
+        
+                <p><strong>High Risk Files:</strong> 0</p>
+                <p><strong>Medium Risk Files:</strong> 62</p>
+                <p><strong>Low Risk Files:</strong> 7989</p>
+            
+                <p><strong>Total Files:</strong> 500</p>
+                <p><strong>Dependencies:</strong> 199</p>
+            
+            </div>
+        
+            <h2>Top High Risk Files</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Risk Score</th>
+                    <th>Highest Risk Factor</th>
+                </tr>
+        
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/elf/ELFDumpReader.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/memory/AbstractMemory.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/vm29/j9/HashTable_V1.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/aix/AIXDumpReader.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_Autoblob/src/com/ibm/j9ddr/autoblob/config/ConstantHandlingStrategy.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/tdump/TDumpReader.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/elf/ELFFileReader.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/vm29/j9/RootScanner.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_Autoblob/src/com/ibm/j9ddr/autoblob/GenerateBlobC.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/macho/MachoDumpReader.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_Autoblob/src/com/ibm/j9ddr/autoblob/xmlparser/StructureXMLParser.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/LibraryResolverFactory.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/minidump/MemoryInfoStream.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/minidump/MiniDumpReader.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/minidump/ModuleStream.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/ddrinteractive/DDRInteractive.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/ddrinteractive/commands/SnapFormatCommand.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/vm29/j9/J9ObjectFieldOffsetIterator_V1.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/vm29/j9/ROMHelp.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+                    <tr>
+                        <td>cdsadapter/com.ibm.cds/src/com/ibm/cds/CDSHookImpls.java</td>
+                        <td class="risk-medium">0.50</td>
+                        <td>complexity (1.00)</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Key Entry Points</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Confidence</th>
+                </tr>
+        
+                    <tr>
+                        <td>debugtools/DDR_Autoblob/src/com/ibm/j9ddr/autoblob/GenerateBlobC.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/tdump/zebedee/util/IntegerLruCache.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/tdump/zebedee/util/IntegerMap.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/libraries/DTFJLibraryAdapter.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/ddrinteractive/DDRInteractive.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/tdump/zebedee/util/BitSetArray.java</td>
+                        <td>0.71</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_Autoblob/testsrc/TestPreProcessedSource.java</td>
+                        <td>0.70</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/AddStructureBlob.java</td>
+                        <td>0.70</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/DTFJWalker.java</td>
+                        <td>0.70</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/PointerGenerator.java</td>
+                        <td>0.70</td>
+                    </tr>
+                
+            </table>
+        
+            <h2>Highly Coupled Files</h2>
+            <p>Files that frequently change together may indicate hidden dependencies.</p>
+            <table>
+                <tr>
+                    <th>File 1</th>
+                    <th>File 2</th>
+                    <th>Coupling Strength</th>
+                </tr>
+        
+            </table>
+        
+            <h2>Central Files</h2>
+            <p>Files with high centrality are architectural hotspots.</p>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Centrality</th>
+                </tr>
+        
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/macho/LoadCommand.java</td>
+                        <td>0.02</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/ddrinteractive/Command.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/elf/ELFDumpReader.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/memory/ProtectedMemoryRange.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/osthread/IOSThread.java</td>
+                        <td>0.01</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/tools/ddrinteractive/ICommand.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_Autoblob/src/com/ibm/j9ddr/autoblob/datamodel/UserDefinedType.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/minidump/Stream.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/tdump/zebedee/util/AbstractHashMap.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+                    <tr>
+                        <td>debugtools/DDR_VM/src/com/ibm/j9ddr/corereaders/memory/BaseMemoryRange.java</td>
+                        <td>0.00</td>
+                    </tr>
+                
+            </table>
+        
+        </body>
+        </html>
+        
