@@ -12,7 +12,7 @@ from repd.repository import LocalRepository
 from repd.model import REPDModel
 
 REPOSITORIES = [
-    r"C:\Users\aniru\openjdk"
+    r"C:\Users\aniru\openjdk" # Path to your repositories
 ]
 
 # Output directory for analysis results
