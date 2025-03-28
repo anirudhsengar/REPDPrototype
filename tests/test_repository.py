@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from repd.repository import Repository, GitRepository, LocalRepository, Commit
+from repd.repository import Commit, GitRepository, LocalRepository, Repository
 
 
 class TestRepository(unittest.TestCase):

@@ -14,10 +14,10 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
 
 from repd.repository import Repository
 

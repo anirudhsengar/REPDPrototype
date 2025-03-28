@@ -14,7 +14,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional, Any
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from pygments import lexers
 from pygments.util import ClassNotFound

@@ -15,13 +15,13 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from repd.cli import main, parse_args, run_analysis, visualize_results
 from repd.model import REPDModel
-from repd.repository import Repository, GitRepository, LocalRepository
+from repd.repository import GitRepository, LocalRepository, Repository
 
 
 class TestCLI(unittest.TestCase):

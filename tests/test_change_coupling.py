@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 
 from repd.change_coupling_analyzer import ChangeCouplingAnalyzer
-from repd.repository import Repository, Commit
+from repd.repository import Commit, Repository
 
 
 class TestChangeCouplingAnalyzer(unittest.TestCase):

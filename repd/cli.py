@@ -16,10 +16,10 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
 
 from repd.model import REPDModel
-from repd.repository import Repository, LocalRepository, GitRepository
+from repd.repository import GitRepository, LocalRepository, Repository
 from repd.visualization import visualize_results
 
 # Configure logging

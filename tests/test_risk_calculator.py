@@ -20,8 +20,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from repd.repository import Commit, Repository
 from repd.risk_calculator import RiskCalculator
-from repd.repository import Repository, Commit
 from repd.structure_mapper import StructureMapper
 
 

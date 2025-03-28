@@ -15,7 +15,7 @@ Author: anirudhsengar
 """
 
 import logging
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, version
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -33,9 +33,10 @@ try:
 except PackageNotFoundError:
     __version__ = "0.1.0"
 
+from repd.entry_point_analyzer import EntryPointIdentifier
+
 # Import key components for easier access
 from repd.model import REPDModel
-from repd.entry_point_analyzer import EntryPointIdentifier
 from repd.repository import Repository
 from repd.risk_calculator import RiskCalculator
 

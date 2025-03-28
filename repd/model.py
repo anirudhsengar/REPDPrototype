@@ -15,15 +15,15 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import networkx as nx
 
-from repd.repository import Repository
-from repd.structure_mapper import StructureMapper
-from repd.risk_calculator import RiskCalculator
-from repd.entry_point_detector import EntryPointDetector
 from repd.change_coupling_analyzer import ChangeCouplingAnalyzer
+from repd.entry_point_detector import EntryPointDetector
+from repd.repository import Repository
+from repd.risk_calculator import RiskCalculator
+from repd.structure_mapper import StructureMapper
 from repd.visualization import visualize_results
 
 logger = logging.getLogger(__name__)
