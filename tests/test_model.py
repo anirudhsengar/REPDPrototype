@@ -39,7 +39,7 @@ class TestREPDModel(unittest.TestCase):
             "src/main.py",
             "src/utils.py",
             "src/models/model.py",
-            "tests/test_main.py"
+            "tests/test_main.py",
         ]
         self.mock_repo.is_code_file.return_value = True
         self.mock_repo.get_file_content.return_value = "def test_function():\n    pass"
@@ -71,13 +71,9 @@ class TestREPDModel(unittest.TestCase):
     def test_configure_custom(self):
         """Test model configuration with custom parameters."""
         custom_config = {
-            "risk_weights": {
-                "complexity": 0.5,
-                "churn": 0.3,
-                "coupling": 0.2
-            },
+            "risk_weights": {"complexity": 0.5, "churn": 0.3, "coupling": 0.2},
             "max_files": 500,
-            "min_history_days": 60
+            "min_history_days": 60,
         }
 
         self.model.configure(**custom_config)
@@ -87,7 +83,7 @@ class TestREPDModel(unittest.TestCase):
         self.assertEqual(self.model.config["max_files"], 500)
         self.assertEqual(self.model.config["min_history_days"], 60)
 
-    @patch.object(StructureMapper, 'map_structure')
+    @patch.object(StructureMapper, "map_structure")
     def test_analyze_structure(self, mock_map_structure):
         """Test repository structure analysis."""
         # Configure mock structure mapper
@@ -108,20 +104,20 @@ class TestREPDModel(unittest.TestCase):
         self.model.structure_mapper = MagicMock(spec=StructureMapper)
         self.model.structure_mapper.get_central_files.return_value = [
             ("src/main.py", 0.8),
-            ("src/utils.py", 0.5)
+            ("src/utils.py", 0.5),
         ]
 
         # Mock complexity analysis
         mock_complexity = {
             "src/main.py": {"complexity": 0.7, "loc": 150},
-            "src/utils.py": {"complexity": 0.4, "loc": 80}
+            "src/utils.py": {"complexity": 0.4, "loc": 80},
         }
         self.model._analyze_complexity = MagicMock(return_value=mock_complexity)
 
         # Mock change history analysis
         mock_history = {
             "src/main.py": {"churn": 0.9, "commits": 20},
-            "src/utils.py": {"churn": 0.3, "commits": 5}
+            "src/utils.py": {"churn": 0.3, "commits": 5},
         }
         self.model._analyze_change_history = MagicMock(return_value=mock_history)
 
@@ -147,13 +143,13 @@ class TestREPDModel(unittest.TestCase):
         # Mock visualization results
         mock_visualize.return_value = {
             "risk": str(self.output_path / "risk_scores.png"),
-            "coupling": str(self.output_path / "change_coupling_network.png")
+            "coupling": str(self.output_path / "change_coupling_network.png"),
         }
 
         # Add some mock results
         self.model.results = {
             "risk_scores": {"src/main.py": 0.8, "src/utils.py": 0.4},
-            "coupling_matrix": {"src/main.py": {"src/utils.py": 0.6}}
+            "coupling_matrix": {"src/main.py": {"src/utils.py": 0.6}},
         }
 
         # Run visualization
@@ -171,7 +167,7 @@ class TestREPDModel(unittest.TestCase):
                 "src/main.py": 0.9,
                 "src/utils.py": 0.4,
                 "src/models/model.py": 0.8,
-                "tests/test_main.py": 0.2
+                "tests/test_main.py": 0.2,
             }
         }
 
@@ -183,16 +179,22 @@ class TestREPDModel(unittest.TestCase):
         self.assertIn("src/main.py", [file for file, _ in hotspots])
         self.assertIn("src/models/model.py", [file for file, _ in hotspots])
 
-    @pytest.mark.parametrize("file_list,expected", [
-        (["src/main.py", "src/utils.py"], True),  # Files exist
-        (["non_existent.py"], False),  # File doesn't exist
-        ([], True)  # Empty list (vacuously true)
-    ])
+    @pytest.mark.parametrize(
+        "file_list,expected",
+        [
+            (["src/main.py", "src/utils.py"], True),  # Files exist
+            (["non_existent.py"], False),  # File doesn't exist
+            ([], True),  # Empty list (vacuously true)
+        ],
+    )
     def test_validate_files(self, file_list, expected):
         """Test file validation with parameterized inputs."""
         # Configure mock repository response
         self.mock_repo.file_exists = lambda f: f in [
-            "src/main.py", "src/utils.py", "src/models/model.py", "tests/test_main.py"
+            "src/main.py",
+            "src/utils.py",
+            "src/models/model.py",
+            "tests/test_main.py",
         ]
 
         # Run validation
@@ -206,7 +208,7 @@ class TestREPDModel(unittest.TestCase):
         # Add mock results
         self.model.results = {
             "risk_scores": {"src/main.py": 0.8, "src/utils.py": 0.4},
-            "analyzed_at": "2025-03-26 06:59:59"
+            "analyzed_at": "2025-03-26 06:59:59",
         }
 
         # Save results
@@ -225,7 +227,7 @@ class TestREPDModel(unittest.TestCase):
         # Verify results loaded correctly
         self.assertEqual(
             new_model.results["risk_scores"]["src/main.py"],
-            self.model.results["risk_scores"]["src/main.py"]
+            self.model.results["risk_scores"]["src/main.py"],
         )
 
     def test_analyze_trend(self):
@@ -235,9 +237,9 @@ class TestREPDModel(unittest.TestCase):
             "risk_scores": {
                 "src/main.py": 0.7,
                 "src/utils.py": 0.3,
-                "src/models/model.py": 0.6
+                "src/models/model.py": 0.6,
             },
-            "analyzed_at": "2025-03-25 06:59:59"
+            "analyzed_at": "2025-03-25 06:59:59",
         }
 
         current_results = {
@@ -245,9 +247,9 @@ class TestREPDModel(unittest.TestCase):
                 "src/main.py": 0.8,
                 "src/utils.py": 0.2,
                 "src/models/model.py": 0.6,
-                "src/new_file.py": 0.5
+                "src/new_file.py": 0.5,
             },
-            "analyzed_at": "2025-03-26 06:59:59"
+            "analyzed_at": "2025-03-26 06:59:59",
         }
 
         # Run trend analysis
@@ -267,5 +269,5 @@ class TestREPDModel(unittest.TestCase):
         self.assertIn("src/new_file.py", trends["new"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

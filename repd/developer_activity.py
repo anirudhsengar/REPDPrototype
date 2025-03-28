@@ -48,7 +48,9 @@ class DeveloperActivityTracker:
         self.file_owners: Dict[str, str] = {}
         self.file_last_modified: Dict[str, datetime] = {}
         self.file_developers: DefaultDict[str, Set[str]] = defaultdict(set)
-        self.developer_changes: DefaultDict[str, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self.developer_changes: DefaultDict[str, DefaultDict[str, int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
         self.developer_total_changes: DefaultDict[str, int] = defaultdict(int)
         self.developer_expertise: Dict[str, float] = {}
 
@@ -65,7 +67,9 @@ class DeveloperActivityTracker:
         Returns:
             Dictionary mapping filenames to developer activity statistics
         """
-        logger.info(f"Tracking developer activity patterns (lookback: {lookback} commits)")
+        logger.info(
+            f"Tracking developer activity patterns (lookback: {lookback} commits)"
+        )
 
         # Extract commits for analysis
         commits = self.repository.get_commit_history(lookback)
@@ -85,9 +89,13 @@ class DeveloperActivityTracker:
         # Log summary statistics
         num_developers = len(self.developer_total_changes)
         num_files = len(self.file_changes)
-        avg_developers_per_file = sum(len(devs) for devs in self.file_developers.values()) / max(1, num_files)
+        avg_developers_per_file = sum(
+            len(devs) for devs in self.file_developers.values()
+        ) / max(1, num_files)
 
-        logger.info(f"Analyzed activity of {num_developers} developers across {num_files} files")
+        logger.info(
+            f"Analyzed activity of {num_developers} developers across {num_files} files"
+        )
         logger.info(f"Average of {avg_developers_per_file:.2f} developers per file")
 
         return self.activity_stats
@@ -104,7 +112,9 @@ class DeveloperActivityTracker:
         """
         return self.activity_stats.get(filename, {})
 
-    def get_developer_files(self, developer: str, min_ownership: float = 0.5) -> List[str]:
+    def get_developer_files(
+        self, developer: str, min_ownership: float = 0.5
+    ) -> List[str]:
         """
         Get files primarily owned by a specific developer.
 
@@ -135,9 +145,7 @@ class DeveloperActivityTracker:
             List of (developer, change_count) tuples
         """
         return sorted(
-            self.developer_total_changes.items(),
-            key=lambda x: x[1],
-            reverse=True
+            self.developer_total_changes.items(), key=lambda x: x[1], reverse=True
         )[:limit]
 
     def get_hot_files(self, limit: int = 10) -> List[Tuple[str, int]]:
@@ -150,11 +158,9 @@ class DeveloperActivityTracker:
         Returns:
             List of (filename, change_count) tuples
         """
-        return sorted(
-            self.file_changes.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:limit]
+        return sorted(self.file_changes.items(), key=lambda x: x[1], reverse=True)[
+            :limit
+        ]
 
     def _process_commits(self, commits: List[Dict[str, Any]]) -> None:
         """
@@ -229,7 +235,9 @@ class DeveloperActivityTracker:
 
             # Calculate ownership ratio (primary owner changes / total changes)
             total_file_changes = sum(dev_changes.values())
-            ownership_ratio = primary_owner[1] / total_file_changes if total_file_changes > 0 else 0.0
+            ownership_ratio = (
+                primary_owner[1] / total_file_changes if total_file_changes > 0 else 0.0
+            )
 
             # Store information in the file's activity stats
             if file not in self.activity_stats:
@@ -261,10 +269,11 @@ class DeveloperActivityTracker:
 
             # Calculate average developer expertise for this file
             dev_expertise_values = [
-                self.developer_expertise.get(dev, 0.5)
-                for dev in developers
+                self.developer_expertise.get(dev, 0.5) for dev in developers
             ]
-            avg_dev_expertise = sum(dev_expertise_values) / max(1, len(dev_expertise_values))
+            avg_dev_expertise = sum(dev_expertise_values) / max(
+                1, len(dev_expertise_values)
+            )
 
             # Get primary owner and ownership ratio
             primary_owner = self.file_owners.get(file, "")
@@ -278,7 +287,9 @@ class DeveloperActivityTracker:
             change_frequency = changes / weeks_in_period
 
             # Calculate recency factor (higher values for recently modified files)
-            recency_factor = np.exp(-days_since_modified / 30) if days_since_modified > 0 else 1.0
+            recency_factor = (
+                np.exp(-days_since_modified / 30) if days_since_modified > 0 else 1.0
+            )
 
             # Calculate expertise factor (lower values indicate higher risk)
             # This inverts expertise so higher risk is represented by higher values
@@ -300,7 +311,7 @@ class DeveloperActivityTracker:
                 "recency_factor": recency_factor,
                 "expertise_level": avg_dev_expertise,
                 "expertise_factor": expertise_factor,
-                "ownership_factor": ownership_factor
+                "ownership_factor": ownership_factor,
             }
 
 

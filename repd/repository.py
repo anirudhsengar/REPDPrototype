@@ -33,8 +33,14 @@ except ImportError:
 class Commit:
     """Represents a commit in version control history."""
 
-    def __init__(self, hash: str, author: str, date: datetime, message: str,
-                 modified_files: List[str]):
+    def __init__(
+        self,
+        hash: str,
+        author: str,
+        date: datetime,
+        message: str,
+        modified_files: List[str],
+    ):
         """
         Initialize a commit.
 
@@ -53,12 +59,14 @@ class Commit:
 
     def __str__(self) -> str:
         """Return string representation of the commit."""
-        date_str = self.date.strftime('%Y-%m-%d %H:%M:%S')
+        date_str = self.date.strftime("%Y-%m-%d %H:%M:%S")
         return f"Commit {self.hash[:7]} by {self.author} on {date_str}: {self.message[:50]}"
 
     def __repr__(self) -> str:
         """Return programmer representation of the commit."""
-        return f"Commit(hash={self.hash[:7]}, author='{self.author}', date='{self.date}')"
+        return (
+            f"Commit(hash={self.hash[:7]}, author='{self.author}', date='{self.date}')"
+        )
 
 
 class Repository:
@@ -148,8 +156,9 @@ class Repository:
         """
         raise NotImplementedError("Subclasses must implement get_file_creation_date")
 
-    def get_commit_history(self, days: int = None, author: str = None,
-                           file_path: str = None) -> List[Commit]:
+    def get_commit_history(
+        self, days: int = None, author: str = None, file_path: str = None
+    ) -> List[Commit]:
         """
         Get the commit history of the repository.
 
@@ -203,31 +212,54 @@ class Repository:
         # Common code file extensions
         code_extensions = {
             # Python
-            '.py', '.pyx', '.pyi',
+            ".py",
+            ".pyx",
+            ".pyi",
             # JavaScript
-            '.js', '.jsx', '.ts', '.tsx',
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
             # Web
-            '.html', '.htm', '.css', '.scss', '.sass', '.less',
+            ".html",
+            ".htm",
+            ".css",
+            ".scss",
+            ".sass",
+            ".less",
             # Java
-            '.java', '.kt', '.groovy',
+            ".java",
+            ".kt",
+            ".groovy",
             # C/C++
-            '.c', '.cpp', '.cc', '.h', '.hpp', '.cxx',
+            ".c",
+            ".cpp",
+            ".cc",
+            ".h",
+            ".hpp",
+            ".cxx",
             # C#
-            '.cs',
+            ".cs",
             # Go
-            '.go',
+            ".go",
             # Ruby
-            '.rb',
+            ".rb",
             # PHP
-            '.php',
+            ".php",
             # Shell
-            '.sh', '.bash',
+            ".sh",
+            ".bash",
             # Swift
-            '.swift',
+            ".swift",
             # Rust
-            '.rs',
+            ".rs",
             # Other
-            '.pl', '.pm', '.scala', '.clj', '.lua', '.hs'
+            ".pl",
+            ".pm",
+            ".scala",
+            ".clj",
+            ".lua",
+            ".hs",
         }
 
         # Get file extension
@@ -246,18 +278,18 @@ class Repository:
             Normalized path
         """
         # Replace backslashes with forward slashes
-        normalized = file_path.replace('\\', '/')
+        normalized = file_path.replace("\\", "/")
 
         # Remove leading slashes
-        while normalized.startswith('/'):
+        while normalized.startswith("/"):
             normalized = normalized[1:]
 
         # Remove drive letter for Windows paths
-        if re.match(r'^[a-zA-Z]:', normalized):
+        if re.match(r"^[a-zA-Z]:", normalized):
             normalized = normalized[2:]
 
         # Remove leading ./ and ../
-        normalized = re.sub(r'^(?:\./|\.\.\/)+', '', normalized)
+        normalized = re.sub(r"^(?:\./|\.\.\/)+", "", normalized)
 
         return normalized
 
@@ -277,8 +309,15 @@ class Repository:
         # Simple cyclomatic complexity estimate
         # Count branch points: if, else, for, while, etc.
         branch_keywords = [
-            r'\bif\b', r'\belse\b', r'\bfor\b', r'\bwhile\b', r'\bcase\b',
-            r'\bcatch\b', r'\b(?:&&|\|\|)\b', r'\?', r'\bswitch\b'
+            r"\bif\b",
+            r"\belse\b",
+            r"\bfor\b",
+            r"\bwhile\b",
+            r"\bcase\b",
+            r"\bcatch\b",
+            r"\b(?:&&|\|\|)\b",
+            r"\?",
+            r"\bswitch\b",
         ]
 
         # Count matches for each keyword
@@ -289,7 +328,7 @@ class Repository:
             complexity += len(matches)
 
         # Calculate nesting depth
-        lines = content.split('\n')
+        lines = content.split("\n")
         max_indent = 0
         for line in lines:
             # Count leading spaces/tabs and divide by typical indentation (4)
@@ -395,7 +434,7 @@ class LocalRepository(Repository):
                 return None
 
             # Read file content
-            return full_path.read_text(errors='replace')
+            return full_path.read_text(errors="replace")
 
         except Exception as e:
             logger.warning(f"Error reading file {file_path}: {str(e)}")
@@ -453,8 +492,9 @@ class LocalRepository(Repository):
         # Use ctime as creation date (best approximation available)
         return datetime.fromtimestamp(stats.st_ctime)
 
-    def get_commit_history(self, days: int = None, author: str = None,
-                           file_path: str = None) -> List[Commit]:
+    def get_commit_history(
+        self, days: int = None, author: str = None, file_path: str = None
+    ) -> List[Commit]:
         """
         Get the commit history of the repository.
 
@@ -470,7 +510,9 @@ class LocalRepository(Repository):
             List of Commit objects
         """
         # Local repositories don't have commit history without Git
-        logger.warning("Local repositories don't have commit history. Use GitRepository instead.")
+        logger.warning(
+            "Local repositories don't have commit history. Use GitRepository instead."
+        )
         return []
 
     def list_directory(self, directory_path: str) -> List[str]:
@@ -530,7 +572,7 @@ class LocalRepository(Repository):
             "size": stats.st_size,
             "creation_date": datetime.fromtimestamp(stats.st_ctime),
             "modification_date": datetime.fromtimestamp(stats.st_mtime),
-            "is_binary": is_binary
+            "is_binary": is_binary,
         }
 
     def _is_binary_file(self, file_path: Union[str, Path]) -> bool:
@@ -545,15 +587,15 @@ class LocalRepository(Repository):
         """
         try:
             # Read first 1024 bytes
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 chunk = f.read(1024)
 
             # Check for null bytes (common in binary files)
-            if b'\0' in chunk:
+            if b"\0" in chunk:
                 return True
 
             # Try to decode as UTF-8
-            chunk.decode('utf-8')
+            chunk.decode("utf-8")
             return False
 
         except UnicodeDecodeError:
@@ -624,7 +666,7 @@ class GitRepository(Repository):
         for root, _, files in os.walk(self.path):
             for file in files:
                 # Skip Git internal files
-                if '.git' in root:
+                if ".git" in root:
                     continue
 
                 # Get full path
@@ -684,7 +726,7 @@ class GitRepository(Repository):
                 return None
 
             # Read file content
-            return full_path.read_text(errors='replace')
+            return full_path.read_text(errors="replace")
 
         except Exception as e:
             logger.warning(f"Error reading file {file_path}: {str(e)}")
@@ -758,8 +800,9 @@ class GitRepository(Repository):
             stats = full_path.stat()
             return datetime.fromtimestamp(stats.st_ctime)
 
-    def get_commit_history(self, days: int = None, author: str = None,
-                           file_path: str = None) -> List[Commit]:
+    def get_commit_history(
+        self, days: int = None, author: str = None, file_path: str = None
+    ) -> List[Commit]:
         """
         Get the commit history of the repository.
 
@@ -809,7 +852,7 @@ class GitRepository(Repository):
                     author=git_commit.author.name,
                     date=commit_date,
                     message=git_commit.message,
-                    modified_files=modified_files
+                    modified_files=modified_files,
                 )
 
                 commits.append(commit)
@@ -885,7 +928,7 @@ class GitRepository(Repository):
             "creation_date": creation_date,
             "modification_date": datetime.fromtimestamp(stats.st_mtime),
             "is_binary": is_binary,
-            "commit_count": len(self.get_file_history(file_path))
+            "commit_count": len(self.get_file_history(file_path)),
         }
 
     def get_contributors(self) -> List[str]:
@@ -949,8 +992,8 @@ class GitRepository(Repository):
                 try:
                     git_commit = self.git_repo.commit(commit.hash)
                     for _, stats in git_commit.stats.files.items():
-                        total_insertions += stats.get('insertions', 0)
-                        total_deletions += stats.get('deletions', 0)
+                        total_insertions += stats.get("insertions", 0)
+                        total_deletions += stats.get("deletions", 0)
                 except:
                     pass
 
@@ -959,7 +1002,7 @@ class GitRepository(Repository):
                 "total_files_changed": len(all_changed_files),
                 "total_insertions": total_insertions,
                 "total_deletions": total_deletions,
-                "total_contributors": len(self.get_contributors())
+                "total_contributors": len(self.get_contributors()),
             }
 
         except Exception as e:
@@ -969,7 +1012,7 @@ class GitRepository(Repository):
                 "total_files_changed": 0,
                 "total_insertions": 0,
                 "total_deletions": 0,
-                "total_contributors": 0
+                "total_contributors": 0,
             }
 
     def _is_binary_file(self, file_path: Union[str, Path]) -> bool:
@@ -984,15 +1027,15 @@ class GitRepository(Repository):
         """
         try:
             # Read first 1024 bytes
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 chunk = f.read(1024)
 
             # Check for null bytes (common in binary files)
-            if b'\0' in chunk:
+            if b"\0" in chunk:
                 return True
 
             # Try to decode as UTF-8
-            chunk.decode('utf-8')
+            chunk.decode("utf-8")
             return False
 
         except UnicodeDecodeError:

@@ -25,8 +25,8 @@ from repd.visualization import visualize_results
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -42,37 +42,63 @@ def parse_args(args=None):
         Parsed argument namespace
     """
     parser = argparse.ArgumentParser(
-        description='REPD: Repository Engineering and Project Dynamics Analysis Tool',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        description="REPD: Repository Engineering and Project Dynamics Analysis Tool",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     subparsers.required = True
 
     # Analyze command
-    analyze_parser = subparsers.add_parser('analyze', help='Analyze a repository')
+    analyze_parser = subparsers.add_parser("analyze", help="Analyze a repository")
     repo_group = analyze_parser.add_mutually_exclusive_group(required=True)
-    repo_group.add_argument('--local', help='Path to local repository')
-    repo_group.add_argument('--git', help='URL of Git repository')
-    analyze_parser.add_argument('--output', required=True, help='Output directory for results')
-    analyze_parser.add_argument('--config', help='Path to configuration JSON file')
-    analyze_parser.add_argument('--max-files', type=int, default=500, help='Maximum files to analyze')
-    analyze_parser.add_argument('--history-days', type=int, default=90, help='Days of history to analyze')
-    analyze_parser.add_argument('--skip-viz', action='store_true', help='Skip visualization generation')
-    analyze_parser.add_argument('--report', help='Generate HTML report at specified path')
+    repo_group.add_argument("--local", help="Path to local repository")
+    repo_group.add_argument("--git", help="URL of Git repository")
+    analyze_parser.add_argument(
+        "--output", required=True, help="Output directory for results"
+    )
+    analyze_parser.add_argument("--config", help="Path to configuration JSON file")
+    analyze_parser.add_argument(
+        "--max-files", type=int, default=500, help="Maximum files to analyze"
+    )
+    analyze_parser.add_argument(
+        "--history-days", type=int, default=90, help="Days of history to analyze"
+    )
+    analyze_parser.add_argument(
+        "--skip-viz", action="store_true", help="Skip visualization generation"
+    )
+    analyze_parser.add_argument(
+        "--report", help="Generate HTML report at specified path"
+    )
 
     # Visualize command
-    visualize_parser = subparsers.add_parser('visualize', help='Visualize analysis results')
-    visualize_parser.add_argument('--input', required=True, help='Path to analysis results JSON file')
-    visualize_parser.add_argument('--output', required=True, help='Output directory for visualizations')
-    visualize_parser.add_argument('--types', nargs='+', dest='viz_types',
-                                  help='Types of visualizations to generate')
+    visualize_parser = subparsers.add_parser(
+        "visualize", help="Visualize analysis results"
+    )
+    visualize_parser.add_argument(
+        "--input", required=True, help="Path to analysis results JSON file"
+    )
+    visualize_parser.add_argument(
+        "--output", required=True, help="Output directory for visualizations"
+    )
+    visualize_parser.add_argument(
+        "--types",
+        nargs="+",
+        dest="viz_types",
+        help="Types of visualizations to generate",
+    )
 
     # Report command
-    report_parser = subparsers.add_parser('report', help='Generate report from analysis results')
-    report_parser.add_argument('--input', required=True, help='Path to analysis results JSON file')
-    report_parser.add_argument('--output', required=True, help='Output path for report')
-    report_parser.add_argument('--template', default='default', help='Report template to use')
+    report_parser = subparsers.add_parser(
+        "report", help="Generate report from analysis results"
+    )
+    report_parser.add_argument(
+        "--input", required=True, help="Path to analysis results JSON file"
+    )
+    report_parser.add_argument("--output", required=True, help="Output path for report")
+    report_parser.add_argument(
+        "--template", default="default", help="Report template to use"
+    )
 
     return parser.parse_args(args)
 
@@ -105,7 +131,7 @@ def run_analysis(args):
     config = {}
     if args.config:
         try:
-            with open(args.config, 'r') as f:
+            with open(args.config, "r") as f:
                 config = json.load(f)
                 logger.info(f"Loaded configuration from {args.config}")
         except Exception as e:
@@ -113,12 +139,12 @@ def run_analysis(args):
 
     # Configure model
     model.configure(
-        max_files=config.get('max_files', args.max_files),
-        history_days=config.get('history_days', args.history_days),
-        risk_weights=config.get('risk_weights'),
-        coupling_threshold=config.get('coupling_threshold'),
-        entry_point_min_score=config.get('entry_point_min_score'),
-        exclude_patterns=config.get('exclude_patterns')
+        max_files=config.get("max_files", args.max_files),
+        history_days=config.get("history_days", args.history_days),
+        risk_weights=config.get("risk_weights"),
+        coupling_threshold=config.get("coupling_threshold"),
+        entry_point_min_score=config.get("entry_point_min_score"),
+        exclude_patterns=config.get("exclude_patterns"),
     )
 
     # Run analysis
@@ -157,7 +183,7 @@ def visualize_results(args):
 
     # Load results
     try:
-        with open(args.input, 'r') as f:
+        with open(args.input, "r") as f:
             results = json.load(f)
     except Exception as e:
         logger.error(f"Error loading results: {str(e)}")
@@ -186,7 +212,7 @@ def generate_report(args):
 
     # Load results
     try:
-        with open(args.input, 'r') as f:
+        with open(args.input, "r") as f:
             results = json.load(f)
     except Exception as e:
         logger.error(f"Error loading results: {str(e)}")
@@ -203,7 +229,7 @@ def generate_report(args):
             super().__init__(name)
 
         def get_name(self):
-            return results.get('metadata', {}).get('repository_name', 'unknown')
+            return results.get("metadata", {}).get("repository_name", "unknown")
 
         def get_all_files(self):
             return []
@@ -230,7 +256,9 @@ def generate_report(args):
             return {}
 
     # Create model with mock repository
-    mock_repo = MockRepository(results.get('metadata', {}).get('repository_name', 'unknown'))
+    mock_repo = MockRepository(
+        results.get("metadata", {}).get("repository_name", "unknown")
+    )
     model = REPDModel(mock_repo)
 
     # Set results directly
@@ -249,11 +277,11 @@ def main():
     args = parse_args()
 
     try:
-        if args.command == 'analyze':
+        if args.command == "analyze":
             run_analysis(args)
-        elif args.command == 'visualize':
+        elif args.command == "visualize":
             visualize_results(args)
-        elif args.command == 'report':
+        elif args.command == "report":
             generate_report(args)
         else:
             logger.error(f"Unknown command: {args.command}")

@@ -11,9 +11,7 @@ from pathlib import Path
 from repd.repository import LocalRepository
 from repd.model import REPDModel
 
-REPOSITORIES = [
-    r"C:\Users\aniru\openjdk" # Path to your repositories
-]
+REPOSITORIES = [r"C:\Users\aniru\openjdk"]  # Path to your repositories
 
 # Output directory for analysis results
 OUTPUT_DIR = "./repd_analysis_results"
@@ -41,8 +39,8 @@ def analyze_repository(repo_path, output_dir):
             "churn": 0.25,
             "coupling": 0.2,
             "structural": 0.2,
-            "age": 0.1
-        }
+            "age": 0.1,
+        },
     )
 
     # Run all analyses
@@ -113,6 +111,7 @@ def main():
         except Exception as e:
             print(f"Error analyzing repository {repo_path}: {str(e)}")
             import traceback
+
             traceback.print_exc()
 
 

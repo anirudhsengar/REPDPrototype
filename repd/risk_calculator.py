@@ -46,7 +46,9 @@ class RiskCalculator:
         self.risk_scores = {}  # Dictionary mapping file paths to risk scores
         self.risk_factors = {}  # Dictionary mapping file paths to risk factor scores
 
-    def calculate_risk_scores(self, weights: Dict[str, float] = None) -> Dict[str, float]:
+    def calculate_risk_scores(
+        self, weights: Dict[str, float] = None
+    ) -> Dict[str, float]:
         """
         Calculate risk scores for all code files in the repository.
 
@@ -66,7 +68,7 @@ class RiskCalculator:
                 "churn": 0.25,
                 "coupling": 0.2,
                 "structural": 0.2,
-                "age": 0.1
+                "age": 0.1,
             }
 
         # Normalize weights to ensure they sum to 1
@@ -74,8 +76,11 @@ class RiskCalculator:
         weights = {k: v / total_weight for k, v in weights.items()}
 
         # Get all code files
-        code_files = [f for f in self.repository.get_all_files()
-                      if self.repository.is_code_file(f)]
+        code_files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         logger.debug(f"Calculating risk for {len(code_files)} files")
 
@@ -100,11 +105,11 @@ class RiskCalculator:
 
             # Calculate weighted sum
             risk = (
-                    weights["complexity"] * complexity +
-                    weights["churn"] * churn +
-                    weights["coupling"] * coupling +
-                    weights["structural"] * structural +
-                    weights["age"] * age
+                weights["complexity"] * complexity
+                + weights["churn"] * churn
+                + weights["coupling"] * coupling
+                + weights["structural"] * structural
+                + weights["age"] * age
             )
 
             # Store results
@@ -114,7 +119,7 @@ class RiskCalculator:
                 "churn": churn,
                 "coupling": coupling,
                 "structural": structural,
-                "age": age
+                "age": age,
             }
 
         self.risk_scores = risk_scores
@@ -134,8 +139,11 @@ class RiskCalculator:
         logger.debug("Analyzing code complexity")
 
         # Get all code files
-        code_files = [f for f in self.repository.get_all_files()
-                      if self.repository.is_code_file(f)]
+        code_files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         # Calculate complexity for each file
         raw_scores = {}
@@ -182,7 +190,7 @@ class RiskCalculator:
                 change_count[file] += 1
 
                 # Check if change is recent
-                if hasattr(commit, 'date') and isinstance(commit.date, datetime):
+                if hasattr(commit, "date") and isinstance(commit.date, datetime):
                     if commit.date >= recent_threshold:
                         recent_change_count[file] += 1
 
@@ -192,7 +200,9 @@ class RiskCalculator:
         for file, count in change_count.items():
             # Consider both total changes and recent changes
             total_score = min(1.0, count / 10)  # Cap at 10 changes for normalization
-            recent_score = min(1.0, recent_change_count[file] / 5)  # Cap at 5 recent changes
+            recent_score = min(
+                1.0, recent_change_count[file] / 5
+            )  # Cap at 5 recent changes
 
             # Combined score with more weight to recent changes
             raw_scores[file] = (0.4 * total_score) + (0.6 * recent_score)
@@ -210,7 +220,10 @@ class RiskCalculator:
         logger.debug("Analyzing code coupling")
 
         # Use structure mapper's import map if available
-        if hasattr(self.structure_mapper, 'import_map') and self.structure_mapper.import_map:
+        if (
+            hasattr(self.structure_mapper, "import_map")
+            and self.structure_mapper.import_map
+        ):
             import_map = self.structure_mapper.import_map
         else:
             # If no import map, return empty scores
@@ -224,13 +237,13 @@ class RiskCalculator:
             import_count = len(imports)
 
             # Count files that import this file (dependents)
-            dependent_count = sum(1 for f, deps in import_map.items()
-                                  if file in deps)
+            dependent_count = sum(1 for f, deps in import_map.items() if file in deps)
 
             # Combined score - files with many dependents and many imports
             # are often more risky
-            raw_scores[file] = (0.3 * min(1.0, import_count / 10)) + \
-                               (0.7 * min(1.0, dependent_count / 5))
+            raw_scores[file] = (0.3 * min(1.0, import_count / 10)) + (
+                0.7 * min(1.0, dependent_count / 5)
+            )
 
         # Normalize scores to 0-1 range
         return self._normalize_scores(raw_scores)
@@ -266,8 +279,11 @@ class RiskCalculator:
         logger.debug("Analyzing file age")
 
         # Get all code files
-        code_files = [f for f in self.repository.get_all_files()
-                      if self.repository.is_code_file(f)]
+        code_files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         # Calculate age for each file
         raw_scores = {}
@@ -288,7 +304,9 @@ class RiskCalculator:
                         raw_scores[file] = 1.0 - (0.5 * age_days / 30)
                     elif age_days > 365:
                         # Old files: risk increases slightly with age from 0.3 to 0.5
-                        raw_scores[file] = 0.3 + (0.2 * min(1.0, (age_days - 365) / 730))
+                        raw_scores[file] = 0.3 + (
+                            0.2 * min(1.0, (age_days - 365) / 730)
+                        )
                     else:
                         # Stable age range: low risk
                         raw_scores[file] = 0.3
@@ -311,9 +329,7 @@ class RiskCalculator:
         """
         # Sort files by risk score (descending)
         sorted_scores = sorted(
-            self.risk_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
+            self.risk_scores.items(), key=lambda x: x[1], reverse=True
         )
 
         # Limit to top N if specified
@@ -364,12 +380,12 @@ class RiskCalculator:
                 "top_risks": [
                     {"file": file, "score": score}
                     for file, score in self.get_risk_scores(top_n=10)
-                ]
-            }
+                ],
+            },
         }
 
         # Write to file
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Exported risk data to {output_file}")
@@ -382,7 +398,7 @@ class RiskCalculator:
             input_file: Path to the input file
         """
         try:
-            with open(input_file, 'r') as f:
+            with open(input_file, "r") as f:
                 data = json.load(f)
 
             self.risk_scores = data.get("risk_scores", {})
@@ -438,15 +454,13 @@ class RiskCalculator:
             highest_factor = max(factors.items(), key=lambda x: x[1])
             factor_name, factor_value = highest_factor
 
-            result[file] = {
-                "factor": factor_name,
-                "value": factor_value
-            }
+            result[file] = {"factor": factor_name, "value": factor_value}
 
         return result
 
-    def classify_risk(self, high_threshold: float = 0.7,
-                      medium_threshold: float = 0.4) -> Dict[str, List[str]]:
+    def classify_risk(
+        self, high_threshold: float = 0.7, medium_threshold: float = 0.4
+    ) -> Dict[str, List[str]]:
         """
         Classify files into risk categories based on thresholds.
 
@@ -472,5 +486,5 @@ class RiskCalculator:
         return {
             "high_risk": high_risk,
             "medium_risk": medium_risk,
-            "low_risk": low_risk
+            "low_risk": low_risk,
         }

@@ -63,25 +63,39 @@ class REPDModel:
                 "churn": 0.25,
                 "coupling": 0.2,
                 "structural": 0.2,
-                "age": 0.1
+                "age": 0.1,
             },
             "coupling_threshold": 0.5,  # Threshold for change coupling
             "entry_point_min_score": 0.6,  # Minimum score for entry points
             "exclude_patterns": [  # Patterns to exclude from analysis
-                ".git/", "venv/", "env/", "node_modules/",
-                "__pycache__/", "*.pyc", "*.pyo", "*.pyd",
-                "*.so", "*.o", "*.a", "*.lib", "*.dll",
-            ]
+                ".git/",
+                "venv/",
+                "env/",
+                "node_modules/",
+                "__pycache__/",
+                "*.pyc",
+                "*.pyo",
+                "*.pyd",
+                "*.so",
+                "*.o",
+                "*.a",
+                "*.lib",
+                "*.dll",
+            ],
         }
 
         # Results storage
         self.results = {}
 
-    def configure(self, max_files: int = None, history_days: int = None,
-                  risk_weights: Dict[str, float] = None,
-                  coupling_threshold: float = None,
-                  entry_point_min_score: float = None,
-                  exclude_patterns: List[str] = None) -> None:
+    def configure(
+        self,
+        max_files: int = None,
+        history_days: int = None,
+        risk_weights: Dict[str, float] = None,
+        coupling_threshold: float = None,
+        entry_point_min_score: float = None,
+        exclude_patterns: List[str] = None,
+    ) -> None:
         """
         Configure analysis parameters.
 
@@ -136,7 +150,9 @@ class REPDModel:
 
         # Initialize other components now that we have structure information
         self.risk_calculator = RiskCalculator(self.repository, self.structure_mapper)
-        self.entry_point_detector = EntryPointDetector(self.repository, self.structure_mapper)
+        self.entry_point_detector = EntryPointDetector(
+            self.repository, self.structure_mapper
+        )
         self.change_coupling_analyzer = ChangeCouplingAnalyzer(self.repository)
 
         # Store results
@@ -145,7 +161,7 @@ class REPDModel:
             "central_files": dict(central_files),
             "file_count": len(dependency_graph.nodes()),
             "edge_count": len(dependency_graph.edges()),
-            "analysis_timestamp": datetime.now().isoformat()
+            "analysis_timestamp": datetime.now().isoformat(),
         }
 
         self.results["structure"] = structure_results
@@ -194,8 +210,10 @@ class REPDModel:
         highest_factors = self.risk_calculator.get_highest_risk_factors()
         self.results["highest_risk_factors"] = highest_factors
 
-        logger.info(f"Risk calculation complete. Found {len(risk_categories['high_risk'])} "
-                    f"high-risk files out of {len(risk_scores)} total.")
+        logger.info(
+            f"Risk calculation complete. Found {len(risk_categories['high_risk'])} "
+            f"high-risk files out of {len(risk_scores)} total."
+        )
 
         return risk_scores
 
@@ -220,13 +238,16 @@ class REPDModel:
 
         # Get significant entry points
         significant_entry_points = {
-            path: score for path, score in self.results["entry_points"].items()
+            path: score
+            for path, score in self.results["entry_points"].items()
             if score >= self.config["entry_point_min_score"]
         }
 
         self.results["significant_entry_points"] = significant_entry_points
 
-        logger.info(f"Identified {len(significant_entry_points)} significant entry points")
+        logger.info(
+            f"Identified {len(significant_entry_points)} significant entry points"
+        )
 
         return significant_entry_points
 
@@ -261,10 +282,14 @@ class REPDModel:
         coupled_clusters = self.change_coupling_analyzer.get_coupled_clusters(
             min_coupling=self.config["coupling_threshold"]
         )
-        self.results["coupled_clusters"] = [list(cluster) for cluster in coupled_clusters]
+        self.results["coupled_clusters"] = [
+            list(cluster) for cluster in coupled_clusters
+        ]
 
-        logger.info(f"Identified {len(high_coupling_pairs)} high coupling pairs "
-                    f"and {len(coupled_clusters)} coupled clusters")
+        logger.info(
+            f"Identified {len(high_coupling_pairs)} high coupling pairs "
+            f"and {len(coupled_clusters)} coupled clusters"
+        )
 
         return self.results["coupling_matrix"]
 
@@ -287,7 +312,7 @@ class REPDModel:
         self.results["metadata"] = {
             "repository_name": self.repository.get_name(),
             "analysis_timestamp": datetime.now().isoformat(),
-            "configuration": self.config
+            "configuration": self.config,
         }
 
         logger.info("Comprehensive analysis completed")
@@ -315,16 +340,18 @@ class REPDModel:
             serializable_results["metadata"] = {
                 "repository_name": self.repository.get_name(),
                 "analysis_timestamp": datetime.now().isoformat(),
-                "configuration": self.config
+                "configuration": self.config,
             }
 
         # Write to file
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(serializable_results, f, indent=2)
 
         logger.info(f"Results saved to {output_path}")
 
-    def visualize(self, output_dir: Union[str, Path], viz_types: List[str] = None) -> Dict[str, str]:
+    def visualize(
+        self, output_dir: Union[str, Path], viz_types: List[str] = None
+    ) -> Dict[str, str]:
         """
         Generate visualizations of analysis results.
 
@@ -402,7 +429,10 @@ class REPDModel:
                 hotspot["risk_factors"] = self.results["risk_factors"][file]
 
             # Add coupling information if available
-            if "coupling_matrix" in self.results and file in self.results["coupling_matrix"]:
+            if (
+                "coupling_matrix" in self.results
+                and file in self.results["coupling_matrix"]
+            ):
                 coupled_files = self.change_coupling_analyzer.get_coupled_files(file)
                 hotspot["coupled_files"] = len(coupled_files)
 
@@ -415,8 +445,9 @@ class REPDModel:
 
         return hotspots
 
-    def generate_report(self, output_path: Union[str, Path],
-                        template: str = "default") -> None:
+    def generate_report(
+        self, output_path: Union[str, Path], template: str = "default"
+    ) -> None:
         """
         Generate a human-readable report of analysis results.
 
@@ -518,14 +549,20 @@ class REPDModel:
 
         # Add risk data if available
         if "risk_scores" in self.results and "highest_risk_factors" in self.results:
-            risk_scores = sorted(self.results["risk_scores"].items(),
-                                 key=lambda x: x[1], reverse=True)[:20]  # Top 20
+            risk_scores = sorted(
+                self.results["risk_scores"].items(), key=lambda x: x[1], reverse=True
+            )[
+                :20
+            ]  # Top 20
 
             highest_factors = self.results["highest_risk_factors"]
 
             for file, score in risk_scores:
-                risk_class = "risk-high" if score >= 0.7 else \
-                    ("risk-medium" if score >= 0.4 else "risk-low")
+                risk_class = (
+                    "risk-high"
+                    if score >= 0.7
+                    else ("risk-medium" if score >= 0.4 else "risk-low")
+                )
 
                 factor = highest_factors.get(file, {}).get("factor", "unknown")
                 factor_value = highest_factors.get(file, {}).get("value", 0)
@@ -554,8 +591,11 @@ class REPDModel:
 
         # Add entry point data if available
         if "entry_points" in self.results:
-            entry_points = sorted(self.results["entry_points"].items(),
-                                  key=lambda x: x[1], reverse=True)[:10]  # Top 10
+            entry_points = sorted(
+                self.results["entry_points"].items(), key=lambda x: x[1], reverse=True
+            )[
+                :10
+            ]  # Top 10
 
             for file, score in entry_points:
                 if score < 0.5:
@@ -620,8 +660,11 @@ class REPDModel:
             centrality = self.structure_mapper.centrality_scores
 
         if centrality:
-            central_files = sorted(centrality.items(),
-                                   key=lambda x: x[1], reverse=True)[:10]  # Top 10
+            central_files = sorted(
+                centrality.items(), key=lambda x: x[1], reverse=True
+            )[
+                :10
+            ]  # Top 10
 
             for file, score in central_files:
                 html_central += f"""
@@ -642,11 +685,18 @@ class REPDModel:
         """
 
         # Combine all sections
-        html_content = (html_start + html_summary + html_risk +
-                        html_entry_points + html_coupled + html_central + html_end)
+        html_content = (
+            html_start
+            + html_summary
+            + html_risk
+            + html_entry_points
+            + html_coupled
+            + html_central
+            + html_end
+        )
 
         # Write to file
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(html_content)
 
     def _prepare_for_serialization(self, data: Any) -> Any:
@@ -672,7 +722,7 @@ class REPDModel:
             # Convert networkx graph to adjacency list
             return {
                 "nodes": list(data.nodes()),
-                "edges": [(u, v, dict(attrs)) for u, v, attrs in data.edges(data=True)]
+                "edges": [(u, v, dict(attrs)) for u, v, attrs in data.edges(data=True)],
             }
 
         elif isinstance(data, datetime):
@@ -680,9 +730,11 @@ class REPDModel:
 
         elif hasattr(data, "__dict__"):
             # Convert custom objects to dictionaries
-            return {k: self._prepare_for_serialization(v)
-                    for k, v in data.__dict__.items()
-                    if not k.startswith("_")}
+            return {
+                k: self._prepare_for_serialization(v)
+                for k, v in data.__dict__.items()
+                if not k.startswith("_")
+            }
 
         else:
             return data

@@ -43,7 +43,7 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
             "src/models/product.py",
             "src/templates/index.html",
             "src/static/styles.css",
-            "tests/test_main.py"
+            "tests/test_main.py",
         ]
 
         self.mock_repo.get_all_files.return_value = self.sample_files
@@ -58,7 +58,7 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 author="dev1",
                 date=base_date,
                 message="Initial setup",
-                modified_files=["src/main.py", "src/utils.py"]
+                modified_files=["src/main.py", "src/utils.py"],
             ),
             # Commit 2: Changes to API and models
             Commit(
@@ -66,7 +66,7 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 author="dev2",
                 date=base_date + timedelta(days=1),
                 message="Implement API endpoints",
-                modified_files=["src/api/endpoints.py", "src/models/user.py"]
+                modified_files=["src/api/endpoints.py", "src/models/user.py"],
             ),
             # Commit 3: Changes to API, models and templates
             Commit(
@@ -77,8 +77,8 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 modified_files=[
                     "src/api/endpoints.py",
                     "src/models/user.py",
-                    "src/templates/index.html"
-                ]
+                    "src/templates/index.html",
+                ],
             ),
             # Commit 4: Changes to main and API
             Commit(
@@ -86,7 +86,7 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 author="dev3",
                 date=base_date + timedelta(days=3),
                 message="Connect main to API",
-                modified_files=["src/main.py", "src/api/endpoints.py"]
+                modified_files=["src/main.py", "src/api/endpoints.py"],
             ),
             # Commit 5: Changes to models only
             Commit(
@@ -94,7 +94,7 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 author="dev2",
                 date=base_date + timedelta(days=5),
                 message="Product model updates",
-                modified_files=["src/models/product.py"]
+                modified_files=["src/models/product.py"],
             ),
             # Commit 6: Multiple file changes
             Commit(
@@ -105,8 +105,8 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 modified_files=[
                     "src/templates/index.html",
                     "src/static/styles.css",
-                    "src/main.py"
-                ]
+                    "src/main.py",
+                ],
             ),
             # Commit 7: More model changes with API
             Commit(
@@ -117,8 +117,8 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 modified_files=[
                     "src/api/endpoints.py",
                     "src/models/user.py",
-                    "src/models/product.py"
-                ]
+                    "src/models/product.py",
+                ],
             ),
             # Commit 8: Test updates
             Commit(
@@ -126,8 +126,8 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
                 author="dev2",
                 date=base_date + timedelta(days=10),
                 message="Add tests",
-                modified_files=["tests/test_main.py", "src/main.py"]
-            )
+                modified_files=["tests/test_main.py", "src/main.py"],
+            ),
         ]
 
         self.mock_repo.get_commit_history.return_value = self.sample_commits
@@ -155,14 +155,15 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
 
         # src/api/endpoints.py and src/models/user.py changed together multiple times
         self.assertGreater(
-            self.analyzer.get_coupling_score("src/api/endpoints.py", "src/models/user.py"),
-            0
+            self.analyzer.get_coupling_score(
+                "src/api/endpoints.py", "src/models/user.py"
+            ),
+            0,
         )
 
         # src/main.py and src/utils.py changed together
         self.assertGreater(
-            self.analyzer.get_coupling_score("src/main.py", "src/utils.py"),
-            0
+            self.analyzer.get_coupling_score("src/main.py", "src/utils.py"), 0
         )
 
     def test_get_coupling_score(self):
@@ -171,7 +172,9 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
         self.analyzer.analyze_coupling()
 
         # Get coupling score for files that changed together
-        score = self.analyzer.get_coupling_score("src/api/endpoints.py", "src/models/user.py")
+        score = self.analyzer.get_coupling_score(
+            "src/api/endpoints.py", "src/models/user.py"
+        )
 
         # Score should be between 0 and 1
         self.assertGreaterEqual(score, 0)
@@ -179,15 +182,13 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
 
         # Test for files that never changed together
         no_coupling_score = self.analyzer.get_coupling_score(
-            "src/static/styles.css",
-            "tests/test_main.py"
+            "src/static/styles.css", "tests/test_main.py"
         )
         self.assertEqual(no_coupling_score, 0)
 
         # Test for invalid file
         invalid_score = self.analyzer.get_coupling_score(
-            "src/main.py",
-            "non_existent_file.py"
+            "src/main.py", "non_existent_file.py"
         )
         self.assertEqual(invalid_score, 0)
 
@@ -197,13 +198,17 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
         self.analyzer.analyze_coupling()
 
         # Get files coupled with API endpoints
-        coupled_files = self.analyzer.get_coupled_files("src/api/endpoints.py", min_score=0)
+        coupled_files = self.analyzer.get_coupled_files(
+            "src/api/endpoints.py", min_score=0
+        )
 
         # Should include user.py and product.py
         self.assertIn("src/models/user.py", coupled_files)
 
         # Test with threshold
-        strongly_coupled = self.analyzer.get_coupled_files("src/api/endpoints.py", min_score=0.7)
+        strongly_coupled = self.analyzer.get_coupled_files(
+            "src/api/endpoints.py", min_score=0.7
+        )
 
         # There may or may not be strongly coupled files depending on scoring algorithm
         # But the count should be less than or equal to total coupled files
@@ -279,7 +284,7 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
             self.assertTrue(output_path.exists())
 
             # Verify file content (basic check)
-            with open(output_path, 'r') as f:
+            with open(output_path, "r") as f:
                 content = f.read()
                 self.assertIn("coupling_matrix", content)
 
@@ -363,5 +368,5 @@ class TestChangeCouplingAnalyzer(unittest.TestCase):
         self.assertNotIn("src/static/styles.css", py_matrix)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

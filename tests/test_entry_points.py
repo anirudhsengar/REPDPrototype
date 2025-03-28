@@ -38,7 +38,7 @@ class TestEntryPointDetector(unittest.TestCase):
             "src/api/endpoints.py",
             "src/utils/helpers.py",
             "src/models/user.py",
-            "tests/test_main.py"
+            "tests/test_main.py",
         ]
         self.mock_repo.is_code_file.return_value = True
         self.mock_repo.normalize_path = lambda path: path
@@ -49,9 +49,9 @@ class TestEntryPointDetector(unittest.TestCase):
                 "src/main.py": 'if __name__ == "__main__":\n    main()',
                 "src/app.py": 'app = Flask(__name__)\n@app.route("/")\ndef index():\n    return "Hello"',
                 "src/api/endpoints.py": '@api.route("/users")\ndef get_users():\n    pass',
-                "src/utils/helpers.py": 'def helper():\n    pass',
-                "src/models/user.py": 'class User:\n    pass',
-                "tests/test_main.py": 'def test_main():\n    pass'
+                "src/utils/helpers.py": "def helper():\n    pass",
+                "src/models/user.py": "class User:\n    pass",
+                "tests/test_main.py": "def test_main():\n    pass",
             }
             return content_map.get(file_path, "")
 
@@ -62,25 +62,29 @@ class TestEntryPointDetector(unittest.TestCase):
 
         # Create a dependency graph for testing
         self.dependency_graph = nx.DiGraph()
-        self.dependency_graph.add_nodes_from([
-            "src/main.py",
-            "src/app.py",
-            "src/api/endpoints.py",
-            "src/utils/helpers.py",
-            "src/models/user.py",
-            "tests/test_main.py"
-        ])
+        self.dependency_graph.add_nodes_from(
+            [
+                "src/main.py",
+                "src/app.py",
+                "src/api/endpoints.py",
+                "src/utils/helpers.py",
+                "src/models/user.py",
+                "tests/test_main.py",
+            ]
+        )
 
         # Add edges (dependencies)
-        self.dependency_graph.add_edges_from([
-            ("src/main.py", "src/utils/helpers.py"),
-            ("src/main.py", "src/models/user.py"),
-            ("src/app.py", "src/api/endpoints.py"),
-            ("src/app.py", "src/models/user.py"),
-            ("src/api/endpoints.py", "src/utils/helpers.py"),
-            ("src/api/endpoints.py", "src/models/user.py"),
-            ("tests/test_main.py", "src/main.py")
-        ])
+        self.dependency_graph.add_edges_from(
+            [
+                ("src/main.py", "src/utils/helpers.py"),
+                ("src/main.py", "src/models/user.py"),
+                ("src/app.py", "src/api/endpoints.py"),
+                ("src/app.py", "src/models/user.py"),
+                ("src/api/endpoints.py", "src/utils/helpers.py"),
+                ("src/api/endpoints.py", "src/models/user.py"),
+                ("tests/test_main.py", "src/main.py"),
+            ]
+        )
 
         self.mock_structure_mapper.dependency_graph = self.dependency_graph
 
@@ -126,7 +130,7 @@ class TestEntryPointDetector(unittest.TestCase):
             "src/api/endpoints.py": 1,
             "src/utils/helpers.py": 3,
             "src/models/user.py": 3,
-            "tests/test_main.py": 0
+            "tests/test_main.py": 0,
         }
 
         # Apply in-degree to mock graph
@@ -145,8 +149,7 @@ class TestEntryPointDetector(unittest.TestCase):
         # or should have lower scores
         if "src/utils/helpers.py" in entry_points:
             self.assertLess(
-                entry_points["src/utils/helpers.py"],
-                entry_points["src/app.py"]
+                entry_points["src/utils/helpers.py"], entry_points["src/app.py"]
             )
 
     def test_filename_convention_detection(self):
@@ -154,9 +157,9 @@ class TestEntryPointDetector(unittest.TestCase):
         # Add mock files with conventional entry point names
         additional_files = {
             "index.js": 'console.log("Hello World")',
-            "server.py": 'server.start()',
-            "cli.py": 'def main():\n    pass',
-            "run.sh": '#!/bin/bash\necho "Running"'
+            "server.py": "server.start()",
+            "cli.py": "def main():\n    pass",
+            "run.sh": '#!/bin/bash\necho "Running"',
         }
 
         all_files = self.mock_repo.get_all_files() + list(additional_files.keys())
@@ -190,7 +193,7 @@ class TestEntryPointDetector(unittest.TestCase):
             "src/app.py": 0.85,
             "src/api/endpoints.py": 0.7,
             "index.js": 0.8,
-            "cli.py": 0.6
+            "cli.py": 0.6,
         }
 
         # Get top 3 entry points
@@ -205,10 +208,7 @@ class TestEntryPointDetector(unittest.TestCase):
     def test_export_entry_points(self):
         """Test exporting entry points to a file."""
         # Set predefined entry points
-        self.detector.entry_points = {
-            "src/main.py": 0.9,
-            "src/app.py": 0.85
-        }
+        self.detector.entry_points = {"src/main.py": 0.9, "src/app.py": 0.85}
 
         # Create a temporary directory for test output
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -221,12 +221,12 @@ class TestEntryPointDetector(unittest.TestCase):
             self.assertTrue(output_path.exists())
 
             # Verify file content (basic check)
-            with open(output_path, 'r') as f:
+            with open(output_path, "r") as f:
                 content = f.read()
                 self.assertIn("src/main.py", content)
                 self.assertIn("src/app.py", content)
 
-    @patch.object(EntryPointDetector, '_analyze_file_content')
+    @patch.object(EntryPointDetector, "_analyze_file_content")
     def test_scan_for_signatures(self, mock_analyze):
         """Test scanning files for entry point signatures."""
         # Setup mock to return predefined scores
@@ -236,7 +236,7 @@ class TestEntryPointDetector(unittest.TestCase):
             "src/api/endpoints.py": 0.7,
             "src/utils/helpers.py": 0.1,
             "src/models/user.py": 0.0,
-            "tests/test_main.py": 0.3
+            "tests/test_main.py": 0.3,
         }.get(file, 0.0)
 
         # Run scan
@@ -256,22 +256,15 @@ class TestEntryPointDetector(unittest.TestCase):
         pattern_scores = {
             "src/main.py": 0.9,
             "src/app.py": 0.8,
-            "src/api/endpoints.py": 0.7
+            "src/api/endpoints.py": 0.7,
         }
 
         # Set up dependency-based scores
-        dependency_scores = {
-            "src/main.py": 0.7,
-            "src/app.py": 0.9,
-            "index.js": 0.8
-        }
+        dependency_scores = {"src/main.py": 0.7, "src/app.py": 0.9, "index.js": 0.8}
 
         # Combine scores
         combined = self.detector._combine_scores(
-            pattern_scores,
-            dependency_scores,
-            pattern_weight=0.6,
-            dependency_weight=0.4
+            pattern_scores, dependency_scores, pattern_weight=0.6, dependency_weight=0.4
         )
 
         # Check combined scores
@@ -281,5 +274,5 @@ class TestEntryPointDetector(unittest.TestCase):
         self.assertAlmostEqual(combined["index.js"], 0.8 * 0.4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

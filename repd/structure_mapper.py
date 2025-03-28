@@ -54,11 +54,16 @@ class StructureMapper:
         logger.info("Mapping repository structure")
 
         # Get all code files in the repository
-        files = [f for f in self.repository.get_all_files()
-                 if self.repository.is_code_file(f)]
+        files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         if max_files and len(files) > max_files:
-            logger.warning(f"Limiting analysis to {max_files} files (out of {len(files)})")
+            logger.warning(
+                f"Limiting analysis to {max_files} files (out of {len(files)})"
+            )
             files = files[:max_files]
 
         # Create nodes for each file
@@ -72,8 +77,10 @@ class StructureMapper:
         # Calculate centrality measures
         self._calculate_centrality_measures()
 
-        logger.info(f"Mapped structure with {self.dependency_graph.number_of_nodes()} nodes "
-                    f"and {self.dependency_graph.number_of_edges()} edges")
+        logger.info(
+            f"Mapped structure with {self.dependency_graph.number_of_nodes()} nodes "
+            f"and {self.dependency_graph.number_of_edges()} edges"
+        )
 
         return self.dependency_graph
 
@@ -104,7 +111,9 @@ class StructureMapper:
 
         # Resolve imports to actual files
         for imported_item in imports:
-            resolved_file = self._resolve_import_to_file(imported_item, file_path, language)
+            resolved_file = self._resolve_import_to_file(
+                imported_item, file_path, language
+            )
             if resolved_file and resolved_file in self.dependency_graph:
                 self.dependency_graph.add_edge(file_path, resolved_file)
 
@@ -115,7 +124,9 @@ class StructureMapper:
 
             # Resolve parent classes to files
             for class_name in inheritance:
-                resolved_file = self._resolve_class_to_file(class_name, file_path, language)
+                resolved_file = self._resolve_class_to_file(
+                    class_name, file_path, language
+                )
                 if resolved_file and resolved_file in self.dependency_graph:
                     self.dependency_graph.add_edge(file_path, resolved_file)
 
@@ -134,14 +145,14 @@ class StructureMapper:
 
         if language == "python":
             # Regular import statements
-            import_pattern = r'^\s*import\s+([a-zA-Z0-9_.,\s]+)'
-            from_import_pattern = r'^\s*from\s+([a-zA-Z0-9_.]+)\s+import'
+            import_pattern = r"^\s*import\s+([a-zA-Z0-9_.,\s]+)"
+            from_import_pattern = r"^\s*from\s+([a-zA-Z0-9_.]+)\s+import"
 
             # Find all imports
-            for line in content.split('\n'):
+            for line in content.split("\n"):
                 import_match = re.match(import_pattern, line)
                 if import_match:
-                    modules = import_match.group(1).split(',')
+                    modules = import_match.group(1).split(",")
                     for module in modules:
                         module = module.strip()
                         if module:
@@ -165,10 +176,10 @@ class StructureMapper:
 
         elif language == "java":
             # Java imports
-            import_pattern = r'^\s*import\s+([a-zA-Z0-9_.]+(\.[*])?);\s*$'
+            import_pattern = r"^\s*import\s+([a-zA-Z0-9_.]+(\.[*])?);\s*$"
 
             # Find all imports
-            for line in content.split('\n'):
+            for line in content.split("\n"):
                 match = re.match(import_pattern, line)
                 if match:
                     imports.append(match.group(1))
@@ -183,13 +194,13 @@ class StructureMapper:
 
         elif language == "go":
             # Go imports
-            import_pattern = r'import\s+\(\s*(.*?)\s*\)'
+            import_pattern = r"import\s+\(\s*(.*?)\s*\)"
             single_import_pattern = r'import\s+"([^"]+)"'
 
             # Find multi-line imports
             matches = re.findall(import_pattern, content, re.DOTALL)
             for match in matches:
-                for line in match.split('\n'):
+                for line in match.split("\n"):
                     stripped = line.strip()
                     if stripped and stripped.startswith('"') and stripped.endswith('"'):
                         imports.append(stripped[1:-1])  # Remove quotes
@@ -208,8 +219,10 @@ class StructureMapper:
 
         elif language == "php":
             # PHP includes and requires
-            include_pattern = r'(include|require|include_once|require_once)\s+[\'"]([^\'"]+)[\'"]'
-            namespace_pattern = r'use\s+([a-zA-Z0-9_\\]+)'
+            include_pattern = (
+                r'(include|require|include_once|require_once)\s+[\'"]([^\'"]+)[\'"]'
+            )
+            namespace_pattern = r"use\s+([a-zA-Z0-9_\\]+)"
 
             # Find all includes
             for match in re.finditer(include_pattern, content):
@@ -236,20 +249,22 @@ class StructureMapper:
 
         if language == "python":
             # Python class definitions with inheritance
-            class_pattern = r'^\s*class\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)'
+            class_pattern = r"^\s*class\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)"
 
             # Find all class definitions with inheritance
             for match in re.finditer(class_pattern, content, re.MULTILINE):
-                parents = match.group(2).split(',')
+                parents = match.group(2).split(",")
                 for parent in parents:
                     parent = parent.strip()
-                    if parent and parent not in ['object', 'Exception']:
+                    if parent and parent not in ["object", "Exception"]:
                         inheritance.append(parent)
 
         elif language == "java":
             # Java class/interface definitions with extends/implements
-            extends_pattern = r'class\s+[a-zA-Z0-9_]+\s+extends\s+([a-zA-Z0-9_]+)'
-            implements_pattern = r'(class|interface)\s+[a-zA-Z0-9_]+\s+implements\s+([^{]+)'
+            extends_pattern = r"class\s+[a-zA-Z0-9_]+\s+extends\s+([a-zA-Z0-9_]+)"
+            implements_pattern = (
+                r"(class|interface)\s+[a-zA-Z0-9_]+\s+implements\s+([^{]+)"
+            )
 
             # Find all extends relationships
             for match in re.finditer(extends_pattern, content):
@@ -257,7 +272,7 @@ class StructureMapper:
 
             # Find all implements relationships
             for match in re.finditer(implements_pattern, content):
-                interfaces = match.group(2).split(',')
+                interfaces = match.group(2).split(",")
                 for interface in interfaces:
                     interface = interface.strip()
                     if interface:
@@ -265,7 +280,9 @@ class StructureMapper:
 
         elif language == "cpp":
             # C++ class definitions with inheritance
-            class_pattern = r'class\s+[a-zA-Z0-9_]+\s*:\s*(?:public|protected|private)?\s*([^{,]+)'
+            class_pattern = (
+                r"class\s+[a-zA-Z0-9_]+\s*:\s*(?:public|protected|private)?\s*([^{,]+)"
+            )
 
             # Find all class definitions with inheritance
             for match in re.finditer(class_pattern, content):
@@ -275,11 +292,11 @@ class StructureMapper:
 
         elif language == "csharp":
             # C# class definitions with inheritance
-            class_pattern = r'class\s+[a-zA-Z0-9_]+\s*:\s*([^{,]+)'
+            class_pattern = r"class\s+[a-zA-Z0-9_]+\s*:\s*([^{,]+)"
 
             # Find all class definitions with inheritance
             for match in re.finditer(class_pattern, content):
-                parents = match.group(1).split(',')
+                parents = match.group(1).split(",")
                 for parent in parents:
                     parent = parent.strip()
                     if parent:
@@ -287,7 +304,9 @@ class StructureMapper:
 
         return inheritance
 
-    def _resolve_import_to_file(self, import_name: str, source_file: str, language: str) -> Optional[str]:
+    def _resolve_import_to_file(
+        self, import_name: str, source_file: str, language: str
+    ) -> Optional[str]:
         """
         Resolve an import statement to the actual file it refers to.
 
@@ -300,8 +319,11 @@ class StructureMapper:
             Path to the imported file, or None if not found
         """
         # Get repository file list (limit the search to code files)
-        all_files = [f for f in self.repository.get_all_files()
-                     if self.repository.is_code_file(f)]
+        all_files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         # Handle language-specific import resolution
         if language == "python":
@@ -309,25 +331,25 @@ class StructureMapper:
             potential_paths = []
 
             # Convert dot notation to directory structure
-            path_parts = import_name.split('.')
-            path_with_init = os.path.join(*path_parts, '__init__.py')
+            path_parts = import_name.split(".")
+            path_with_init = os.path.join(*path_parts, "__init__.py")
             path_with_extension = f"{os.path.join(*path_parts)}.py"
 
             potential_paths.append(path_with_init)
             potential_paths.append(path_with_extension)
 
             # Handle relative imports
-            if import_name.startswith('.'):
+            if import_name.startswith("."):
                 source_dir = os.path.dirname(source_file)
-                rel_import = import_name.lstrip('.')
-                rel_parts = rel_import.split('.')
+                rel_import = import_name.lstrip(".")
+                rel_parts = rel_import.split(".")
 
                 # Go up one directory for each dot
                 up_count = len(import_name) - len(rel_import)
                 for _ in range(up_count):
                     source_dir = os.path.dirname(source_dir)
 
-                rel_path_with_init = os.path.join(source_dir, *rel_parts, '__init__.py')
+                rel_path_with_init = os.path.join(source_dir, *rel_parts, "__init__.py")
                 rel_path_with_extension = f"{os.path.join(source_dir, *rel_parts)}.py"
 
                 potential_paths.append(rel_path_with_init)
@@ -344,22 +366,26 @@ class StructureMapper:
             potential_paths = []
 
             # Direct path with extension
-            for ext in ['.js', '.jsx', '.ts', '.tsx']:
+            for ext in [".js", ".jsx", ".ts", ".tsx"]:
                 potential_paths.append(f"{import_name}{ext}")
 
             # Directory with index file
-            for ext in ['.js', '.jsx', '.ts', '.tsx']:
+            for ext in [".js", ".jsx", ".ts", ".tsx"]:
                 potential_paths.append(os.path.join(import_name, f"index{ext}"))
 
             # Handle relative imports
             source_dir = os.path.dirname(source_file)
-            if import_name.startswith('./') or import_name.startswith('../'):
-                for ext in ['.js', '.jsx', '.ts', '.tsx']:
-                    rel_path = os.path.normpath(os.path.join(source_dir, f"{import_name}{ext}"))
+            if import_name.startswith("./") or import_name.startswith("../"):
+                for ext in [".js", ".jsx", ".ts", ".tsx"]:
+                    rel_path = os.path.normpath(
+                        os.path.join(source_dir, f"{import_name}{ext}")
+                    )
                     potential_paths.append(rel_path)
 
                     # Directory with index file for relative imports
-                    rel_dir_path = os.path.normpath(os.path.join(source_dir, import_name, f"index{ext}"))
+                    rel_dir_path = os.path.normpath(
+                        os.path.join(source_dir, import_name, f"index{ext}")
+                    )
                     potential_paths.append(rel_dir_path)
 
             # Check if any potential path exists in the repository
@@ -374,15 +400,15 @@ class StructureMapper:
             if import_name.endswith(".*"):
                 # This is a package import, look for any file in the package
                 package = import_name[:-2]
-                package_path = package.replace('.', '/')
+                package_path = package.replace(".", "/")
 
                 # Find any file in this package
                 for file in all_files:
-                    if file.startswith(package_path + '/') and file.endswith('.java'):
+                    if file.startswith(package_path + "/") and file.endswith(".java"):
                         return file
             else:
                 # This is a specific class import
-                class_path = import_name.replace('.', '/') + '.java'
+                class_path = import_name.replace(".", "/") + ".java"
                 normalized_path = self.repository.normalize_path(class_path)
 
                 if normalized_path in all_files:
@@ -424,7 +450,7 @@ class StructureMapper:
             potential_paths.append(import_name)
 
             # Path with .php extension
-            if not import_name.endswith('.php'):
+            if not import_name.endswith(".php"):
                 potential_paths.append(f"{import_name}.php")
 
             # Path relative to source directory
@@ -440,7 +466,9 @@ class StructureMapper:
         # No match found
         return None
 
-    def _resolve_class_to_file(self, class_name: str, source_file: str, language: str) -> Optional[str]:
+    def _resolve_class_to_file(
+        self, class_name: str, source_file: str, language: str
+    ) -> Optional[str]:
         """
         Resolve a class name to the file that defines it.
 
@@ -453,14 +481,17 @@ class StructureMapper:
             Path to the file defining the class, or None if not found
         """
         # Get repository file list (limit the search to code files)
-        all_files = [f for f in self.repository.get_all_files()
-                     if self.repository.is_code_file(f)]
+        all_files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         # Handle language-specific class resolution
         if language == "python":
             # Look for class definition in each Python file
             for file in all_files:
-                if not file.endswith('.py'):
+                if not file.endswith(".py"):
                     continue
 
                 content = self.repository.get_file_content(file)
@@ -468,23 +499,23 @@ class StructureMapper:
                     continue
 
                 # Look for class definition
-                class_pattern = r'^\s*class\s+' + re.escape(class_name) + r'\s*(\(|:)'
+                class_pattern = r"^\s*class\s+" + re.escape(class_name) + r"\s*(\(|:)"
                 if re.search(class_pattern, content, re.MULTILINE):
                     return file
 
         elif language == "java":
             # In Java, class name typically matches file name
-            potential_file = class_name + '.java'
+            potential_file = class_name + ".java"
 
             # Check all possible locations
             for file in all_files:
-                if file.endswith('/' + potential_file):
+                if file.endswith("/" + potential_file):
                     return file
 
         elif language == "cpp":
             # Look for class definition in header files
             for file in all_files:
-                if not file.endswith(('.h', '.hpp')):
+                if not file.endswith((".h", ".hpp")):
                     continue
 
                 content = self.repository.get_file_content(file)
@@ -492,17 +523,19 @@ class StructureMapper:
                     continue
 
                 # Look for class definition
-                class_pattern = r'(class|struct)\s+' + re.escape(class_name) + r'\s*[{:]'
+                class_pattern = (
+                    r"(class|struct)\s+" + re.escape(class_name) + r"\s*[{:]"
+                )
                 if re.search(class_pattern, content):
                     return file
 
         elif language == "csharp":
             # In C#, class name might match file name
-            potential_file = class_name + '.cs'
+            potential_file = class_name + ".cs"
 
             # Check all possible locations
             for file in all_files:
-                if file.endswith('/' + potential_file):
+                if file.endswith("/" + potential_file):
                     return file
 
                 # If not found by name, look for class definition
@@ -511,7 +544,11 @@ class StructureMapper:
                     continue
 
                 # Look for class definition
-                class_pattern = r'(public|internal|private)?\s+class\s+' + re.escape(class_name) + r'\s*[{:]'
+                class_pattern = (
+                    r"(public|internal|private)?\s+class\s+"
+                    + re.escape(class_name)
+                    + r"\s*[{:]"
+                )
                 if re.search(class_pattern, content):
                     return file
 
@@ -530,23 +567,23 @@ class StructureMapper:
         """
         # Map extensions to languages
         extension_map = {
-            '.py': 'python',
-            '.js': 'javascript',
-            '.jsx': 'javascript',
-            '.ts': 'javascript',
-            '.tsx': 'javascript',
-            '.java': 'java',
-            '.c': 'cpp',
-            '.cpp': 'cpp',
-            '.cc': 'cpp',
-            '.h': 'cpp',
-            '.hpp': 'cpp',
-            '.go': 'go',
-            '.rb': 'ruby',
-            '.php': 'php',
-            '.cs': 'csharp',
-            '.html': 'html',
-            '.css': 'css'
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "javascript",
+            ".ts": "javascript",
+            ".tsx": "javascript",
+            ".java": "java",
+            ".c": "cpp",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".h": "cpp",
+            ".hpp": "cpp",
+            ".go": "go",
+            ".rb": "ruby",
+            ".php": "php",
+            ".cs": "csharp",
+            ".html": "html",
+            ".css": "css",
         }
 
         # Get file extension
@@ -562,14 +599,16 @@ class StructureMapper:
             return None
 
         # Check for language-specific patterns
-        if re.search(r'^\s*package\s+[a-zA-Z0-9_.]+;', content):
-            return 'java'
-        if re.search(r'^\s*<\?php', content):
-            return 'php'
-        if re.search(r'^\s*(import\s+[a-zA-Z0-9_.]+|from\s+[a-zA-Z0-9_.]+\s+import)', content):
-            return 'python'
-        if re.search(r'^\s*(let|const|var|function|import)\s+', content):
-            return 'javascript'
+        if re.search(r"^\s*package\s+[a-zA-Z0-9_.]+;", content):
+            return "java"
+        if re.search(r"^\s*<\?php", content):
+            return "php"
+        if re.search(
+            r"^\s*(import\s+[a-zA-Z0-9_.]+|from\s+[a-zA-Z0-9_.]+\s+import)", content
+        ):
+            return "python"
+        if re.search(r"^\s*(let|const|var|function|import)\s+", content):
+            return "javascript"
 
         # Unknown language
         return None
@@ -619,7 +658,9 @@ class StructureMapper:
 
         return self._get_recursive_dependencies(file_path, set())
 
-    def _get_recursive_dependencies(self, file_path: str, visited: Set[str]) -> Set[str]:
+    def _get_recursive_dependencies(
+        self, file_path: str, visited: Set[str]
+    ) -> Set[str]:
         """
         Helper method to get recursive dependencies with cycle detection.
 
@@ -695,9 +736,7 @@ class StructureMapper:
 
         # Sort files by centrality score (descending)
         sorted_files = sorted(
-            self.centrality_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
+            self.centrality_scores.items(), key=lambda x: x[1], reverse=True
         )
 
         # Return top N if specified
@@ -729,36 +768,42 @@ class StructureMapper:
 
             # Combine centrality measures with weights
             weights = {
-                'betweenness': 0.35,
-                'in_degree': 0.3,
-                'out_degree': 0.15,
-                'pagerank': 0.2
+                "betweenness": 0.35,
+                "in_degree": 0.3,
+                "out_degree": 0.15,
+                "pagerank": 0.2,
             }
 
             # Calculate combined centrality score
             for node in self.dependency_graph.nodes():
                 self.centrality_scores[node] = (
-                        betweenness.get(node, 0) * weights['betweenness'] +
-                        in_degree.get(node, 0) * weights['in_degree'] +
-                        out_degree.get(node, 0) * weights['out_degree'] +
-                        pagerank.get(node, 0) * weights['pagerank']
+                    betweenness.get(node, 0) * weights["betweenness"]
+                    + in_degree.get(node, 0) * weights["in_degree"]
+                    + out_degree.get(node, 0) * weights["out_degree"]
+                    + pagerank.get(node, 0) * weights["pagerank"]
                 )
 
             # Store individual centrality measures as node attributes
-            nx.set_node_attributes(self.dependency_graph, betweenness, 'betweenness')
-            nx.set_node_attributes(self.dependency_graph, in_degree, 'in_degree')
-            nx.set_node_attributes(self.dependency_graph, out_degree, 'out_degree')
-            nx.set_node_attributes(self.dependency_graph, pagerank, 'pagerank')
-            nx.set_node_attributes(self.dependency_graph, self.centrality_scores, 'centrality')
+            nx.set_node_attributes(self.dependency_graph, betweenness, "betweenness")
+            nx.set_node_attributes(self.dependency_graph, in_degree, "in_degree")
+            nx.set_node_attributes(self.dependency_graph, out_degree, "out_degree")
+            nx.set_node_attributes(self.dependency_graph, pagerank, "pagerank")
+            nx.set_node_attributes(
+                self.dependency_graph, self.centrality_scores, "centrality"
+            )
 
             logger.info("Centrality measures calculated successfully")
 
         except Exception as e:
             logger.error(f"Error calculating centrality measures: {str(e)}")
             # Initialize with empty values if calculation fails
-            self.centrality_scores = {node: 0.0 for node in self.dependency_graph.nodes()}
+            self.centrality_scores = {
+                node: 0.0 for node in self.dependency_graph.nodes()
+            }
 
-    def visualize_dependency_graph(self, output_path: str, max_nodes: int = 100) -> None:
+    def visualize_dependency_graph(
+        self, output_path: str, max_nodes: int = 100
+    ) -> None:
         """
         Visualize the dependency graph.
 
@@ -790,7 +835,9 @@ class StructureMapper:
 
         # Get centrality for node sizing
         centrality = self.centrality_scores or nx.degree_centrality(viz_graph)
-        node_sizes = [5000 * centrality.get(node, 0.1) + 100 for node in viz_graph.nodes()]
+        node_sizes = [
+            5000 * centrality.get(node, 0.1) + 100 for node in viz_graph.nodes()
+        ]
 
         # Draw the graph
         nx.draw(
@@ -798,20 +845,26 @@ class StructureMapper:
             pos,
             with_labels=False,
             node_size=node_sizes,
-            node_color='skyblue',
-            edge_color='gray',
+            node_color="skyblue",
+            edge_color="gray",
             alpha=0.8,
-            arrows=True
+            arrows=True,
         )
 
         # Add labels for most central nodes
         if len(viz_graph) > 20:
             # Only label top 20 nodes by centrality
             top_files = [f for f, _ in self.get_central_files(20)]
-            label_dict = {node: self._get_short_name(node) for node in top_files if node in viz_graph}
+            label_dict = {
+                node: self._get_short_name(node)
+                for node in top_files
+                if node in viz_graph
+            }
         else:
             # Label all nodes
-            label_dict = {node: self._get_short_name(node) for node in viz_graph.nodes()}
+            label_dict = {
+                node: self._get_short_name(node) for node in viz_graph.nodes()
+            }
 
         nx.draw_networkx_labels(viz_graph, pos, labels=label_dict, font_size=8)
 
@@ -819,7 +872,7 @@ class StructureMapper:
         plt.title(f"Dependency Graph for {self.repository.get_name()}", fontsize=16)
 
         # Save figure
-        plt.savefig(output_path, bbox_inches='tight', dpi=300)
+        plt.savefig(output_path, bbox_inches="tight", dpi=300)
         plt.close()
 
         logger.info(f"Dependency graph visualization saved to {output_path}")
@@ -838,7 +891,7 @@ class StructureMapper:
         name = os.path.basename(file_path)
 
         # If path has directory components, add the parent directory
-        if '/' in file_path:
+        if "/" in file_path:
             parent = os.path.basename(os.path.dirname(file_path))
             return f"{parent}/{name}"
 

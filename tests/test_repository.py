@@ -46,7 +46,7 @@ class TestRepository(unittest.TestCase):
             (self.repo.get_file_creation_date, ["file.txt"]),
             (self.repo.get_commit_history, []),
             (self.repo.list_directory, ["dir"]),
-            (self.repo.get_file_attributes, ["file.txt"])
+            (self.repo.get_file_attributes, ["file.txt"]),
         ]
 
         for method, args in abstract_methods:
@@ -66,7 +66,7 @@ class TestRepository(unittest.TestCase):
             "program.java",
             "module.go",
             "script.rb",
-            "app.php"
+            "app.php",
         ]
 
         # Non-code files
@@ -78,21 +78,20 @@ class TestRepository(unittest.TestCase):
             "readme.md",
             "license.txt",
             "archive.zip",
-            ".gitignore"
+            ".gitignore",
         ]
 
         # Test code files
         for file in code_files:
             self.assertTrue(
-                self.repo.is_code_file(file),
-                f"Failed to identify {file} as code file"
+                self.repo.is_code_file(file), f"Failed to identify {file} as code file"
             )
 
         # Test non-code files
         for file in non_code_files:
             self.assertFalse(
                 self.repo.is_code_file(file),
-                f"Incorrectly identified {file} as code file"
+                f"Incorrectly identified {file} as code file",
             )
 
     def test_normalize_path(self):
@@ -104,14 +103,11 @@ class TestRepository(unittest.TestCase):
             ("/path/to/file.txt", "path/to/file.txt"),
             ("./path/to/file.txt", "path/to/file.txt"),
             ("../path/to/file.txt", "path/to/file.txt"),
-            ("C:\\Users\\path\\to\\file.txt", "path/to/file.txt")
+            ("C:\\Users\\path\\to\\file.txt", "path/to/file.txt"),
         ]
 
         for input_path, expected in test_cases:
-            self.assertEqual(
-                self.repo.normalize_path(input_path),
-                expected
-            )
+            self.assertEqual(self.repo.normalize_path(input_path), expected)
 
     def test_calculate_complexity(self):
         """Test code complexity calculation."""
@@ -161,7 +157,7 @@ class TestLocalRepository(unittest.TestCase):
             "lib/utils.py": "def util_func():\n    pass",
             "lib/data.json": '{"key": "value"}',
             "docs/readme.md": "# Test Repository",
-            "static/image.png": b"\x89PNG\r\n\x1a\n"  # Minimal PNG header
+            "static/image.png": b"\x89PNG\r\n\x1a\n",  # Minimal PNG header
         }
 
         # Create files with content
@@ -197,7 +193,7 @@ class TestLocalRepository(unittest.TestCase):
             "lib/utils.py",
             "lib/data.json",
             "docs/readme.md",
-            "static/image.png"
+            "static/image.png",
         ]
 
         # Convert to sets for comparison (order doesn't matter)
@@ -216,20 +212,16 @@ class TestLocalRepository(unittest.TestCase):
     def test_get_file_content(self):
         """Test file content retrieval."""
         # Test text files
-        self.assertEqual(
-            self.repo.get_file_content("main.py"),
-            "print('Hello World')"
-        )
+        self.assertEqual(self.repo.get_file_content("main.py"), "print('Hello World')")
 
         self.assertEqual(
-            self.repo.get_file_content("lib/utils.py"),
-            "def util_func():\n    pass"
+            self.repo.get_file_content("lib/utils.py"), "def util_func():\n    pass"
         )
 
         # Test binary files (should return None or empty for binary files)
         self.assertIn(
             self.repo.get_file_content("static/image.png"),
-            [None, "", b"\x89PNG\r\n\x1a\n"]
+            [None, "", b"\x89PNG\r\n\x1a\n"],
         )
 
         # Test non-existent file
@@ -246,10 +238,7 @@ class TestLocalRepository(unittest.TestCase):
     def test_get_file_creation_date(self):
         """Test file creation date retrieval."""
         # Should return a datetime object for existing files
-        self.assertIsInstance(
-            self.repo.get_file_creation_date("main.py"),
-            datetime
-        )
+        self.assertIsInstance(self.repo.get_file_creation_date("main.py"), datetime)
 
         # Test non-existent file
         with self.assertRaises(Exception):
@@ -295,6 +284,7 @@ class TestGitRepository(unittest.TestCase):
         """Set up test environment once before all tests."""
         try:
             import git
+
             cls.git_available = True
         except ImportError:
             cls.git_available = False
@@ -309,7 +299,7 @@ class TestGitRepository(unittest.TestCase):
         self.repo_path = Path(self.temp_dir.name)
 
         # Initialize a git repository and create test files
-        with patch('repd.repository.git.Repo.clone_from') as mock_clone:
+        with patch("repd.repository.git.Repo.clone_from") as mock_clone:
             # Mock the clone operation to create a fake Git repo
             mock_clone.return_value = MagicMock()
 
@@ -324,7 +314,7 @@ class TestGitRepository(unittest.TestCase):
             sample_files = {
                 "main.py": "print('Hello World')",
                 "lib/utils.py": "def util_func():\n    pass",
-                "docs/readme.md": "# Test Repository"
+                "docs/readme.md": "# Test Repository",
             }
 
             # Create files with content
@@ -355,8 +345,9 @@ class TestGitRepository(unittest.TestCase):
                 else:
                     changed_files = ["docs/readme.md"]
 
-                mock_commit.stats.files = {file: {"insertions": 5, "deletions": 2}
-                                           for file in changed_files}
+                mock_commit.stats.files = {
+                    file: {"insertions": 5, "deletions": 2} for file in changed_files
+                }
                 mock_commits.append(mock_commit)
 
             # Set the mocked commits
@@ -369,7 +360,7 @@ class TestGitRepository(unittest.TestCase):
     def test_init(self):
         """Test git repository initialization."""
         # Create a new instance that exercises the __init__ method
-        with patch('repd.repository.git.Repo.clone_from') as mock_clone:
+        with patch("repd.repository.git.Repo.clone_from") as mock_clone:
             mock_clone.return_value = MagicMock()
             repo = GitRepository("https://github.com/user/repo.git")
 
@@ -386,11 +377,11 @@ class TestGitRepository(unittest.TestCase):
         # Check that each commit has the right properties
         for commit in commits:
             self.assertIsInstance(commit, Commit)
-            self.assertTrue(hasattr(commit, 'hash'))
-            self.assertTrue(hasattr(commit, 'author'))
-            self.assertTrue(hasattr(commit, 'date'))
-            self.assertTrue(hasattr(commit, 'message'))
-            self.assertTrue(hasattr(commit, 'modified_files'))
+            self.assertTrue(hasattr(commit, "hash"))
+            self.assertTrue(hasattr(commit, "author"))
+            self.assertTrue(hasattr(commit, "date"))
+            self.assertTrue(hasattr(commit, "message"))
+            self.assertTrue(hasattr(commit, "modified_files"))
 
     def test_get_commit_history_with_filters(self):
         """Test retrieving commit history with filters."""
@@ -410,9 +401,7 @@ class TestGitRepository(unittest.TestCase):
 
         # Test combination of filters
         filtered_commits = self.repo.get_commit_history(
-            days=5,
-            author="Author1",
-            file_path="lib/utils.py"
+            days=5, author="Author1", file_path="lib/utils.py"
         )
 
         # Verify that filtered commits match all criteria
@@ -472,7 +461,7 @@ class TestCommit(unittest.TestCase):
             author="test_author",
             date=date,
             message="Test commit",
-            modified_files=["file1.py", "file2.py"]
+            modified_files=["file1.py", "file2.py"],
         )
 
         # Check properties
@@ -490,7 +479,7 @@ class TestCommit(unittest.TestCase):
             author="test_author",
             date=date,
             message="Test commit",
-            modified_files=["file1.py", "file2.py"]
+            modified_files=["file1.py", "file2.py"],
         )
 
         # Check string representation
@@ -507,7 +496,7 @@ class TestCommit(unittest.TestCase):
             author="test_author",
             date=date,
             message="Test commit",
-            modified_files=["file1.py", "file2.py"]
+            modified_files=["file1.py", "file2.py"],
         )
 
         # Check repr representation
@@ -516,5 +505,5 @@ class TestCommit(unittest.TestCase):
         self.assertIn("abc123", commit_repr)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

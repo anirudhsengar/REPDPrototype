@@ -48,9 +48,15 @@ class TestCLI(unittest.TestCase):
     def test_parse_args_local(self):
         """Test argument parsing for local repository analysis."""
         # Test basic local repository analysis
-        args = parse_args(["analyze",
-                           "--local", str(self.repo_path),
-                           "--output", str(self.output_dir)])
+        args = parse_args(
+            [
+                "analyze",
+                "--local",
+                str(self.repo_path),
+                "--output",
+                str(self.output_dir),
+            ]
+        )
 
         self.assertEqual(args.command, "analyze")
         self.assertEqual(args.local, str(self.repo_path))
@@ -60,9 +66,15 @@ class TestCLI(unittest.TestCase):
     def test_parse_args_git(self):
         """Test argument parsing for Git repository analysis."""
         # Test Git repository analysis
-        args = parse_args(["analyze",
-                           "--git", "https://github.com/user/repo.git",
-                           "--output", str(self.output_dir)])
+        args = parse_args(
+            [
+                "analyze",
+                "--git",
+                "https://github.com/user/repo.git",
+                "--output",
+                str(self.output_dir),
+            ]
+        )
 
         self.assertEqual(args.command, "analyze")
         self.assertEqual(args.git, "https://github.com/user/repo.git")
@@ -72,9 +84,15 @@ class TestCLI(unittest.TestCase):
     def test_parse_args_visualize(self):
         """Test argument parsing for visualization command."""
         # Test visualization command
-        args = parse_args(["visualize",
-                           "--input", str(self.output_dir / "results.json"),
-                           "--output", str(self.output_dir / "viz")])
+        args = parse_args(
+            [
+                "visualize",
+                "--input",
+                str(self.output_dir / "results.json"),
+                "--output",
+                str(self.output_dir / "viz"),
+            ]
+        )
 
         self.assertEqual(args.command, "visualize")
         self.assertEqual(args.input, str(self.output_dir / "results.json"))
@@ -83,12 +101,21 @@ class TestCLI(unittest.TestCase):
     def test_parse_args_config(self):
         """Test argument parsing with configuration options."""
         # Test configuration options
-        args = parse_args(["analyze",
-                           "--local", str(self.repo_path),
-                           "--output", str(self.output_dir),
-                           "--config", str(self.output_dir / "config.json"),
-                           "--max-files", "100",
-                           "--history-days", "30"])
+        args = parse_args(
+            [
+                "analyze",
+                "--local",
+                str(self.repo_path),
+                "--output",
+                str(self.output_dir),
+                "--config",
+                str(self.output_dir / "config.json"),
+                "--max-files",
+                "100",
+                "--history-days",
+                "30",
+            ]
+        )
 
         self.assertEqual(args.config, str(self.output_dir / "config.json"))
         self.assertEqual(args.max_files, 100)
@@ -97,10 +124,17 @@ class TestCLI(unittest.TestCase):
     def test_parse_args_report(self):
         """Test argument parsing for report generation."""
         # Test report command
-        args = parse_args(["report",
-                           "--input", str(self.output_dir / "results.json"),
-                           "--output", str(self.output_dir / "report.html"),
-                           "--template", "default"])
+        args = parse_args(
+            [
+                "report",
+                "--input",
+                str(self.output_dir / "results.json"),
+                "--output",
+                str(self.output_dir / "report.html"),
+                "--template",
+                "default",
+            ]
+        )
 
         self.assertEqual(args.command, "report")
         self.assertEqual(args.input, str(self.output_dir / "results.json"))
@@ -197,9 +231,9 @@ class TestCLI(unittest.TestCase):
                 "complexity": 0.4,
                 "churn": 0.3,
                 "coupling": 0.2,
-                "structural": 0.1
+                "structural": 0.1,
             },
-            "max_files": 200
+            "max_files": 200,
         }
         mock_json_load.return_value = mock_config
 
@@ -216,10 +250,13 @@ class TestCLI(unittest.TestCase):
         # Create mock config file
         config_file = self.output_dir / "config.json"
         config_file.write_text(
-            '{"risk_weights": {"complexity": 0.4, "churn": 0.3, "coupling": 0.2, "structural": 0.1}, "max_files": 200}')
+            '{"risk_weights": {"complexity": 0.4, "churn": 0.3, "coupling": 0.2, "structural": 0.1}, "max_files": 200}'
+        )
 
         # Run analysis
-        with patch("repd.cli.open", unittest.mock.mock_open(read_data=config_file.read_text())):
+        with patch(
+            "repd.cli.open", unittest.mock.mock_open(read_data=config_file.read_text())
+        ):
             run_analysis(args)
 
         # Verify configure was called with the config settings
@@ -233,12 +270,7 @@ class TestCLI(unittest.TestCase):
     def test_visualize_command(self, mock_visualize_func, mock_json_load):
         """Test running the visualize command."""
         # Setup mock results
-        mock_results = {
-            "risk_scores": {
-                "file1.py": 0.8,
-                "file2.py": 0.4
-            }
-        }
+        mock_results = {"risk_scores": {"file1.py": 0.8, "file2.py": 0.4}}
         mock_json_load.return_value = mock_results
 
         # Create args for visualization
@@ -252,7 +284,9 @@ class TestCLI(unittest.TestCase):
         results_file.write_text('{"risk_scores": {"file1.py": 0.8, "file2.py": 0.4}}')
 
         # Run visualization
-        with patch("repd.cli.open", unittest.mock.mock_open(read_data=results_file.read_text())):
+        with patch(
+            "repd.cli.open", unittest.mock.mock_open(read_data=results_file.read_text())
+        ):
             visualize_results(args)
 
         # Verify visualization function was called correctly
@@ -327,8 +361,7 @@ class TestCLI(unittest.TestCase):
         args.skip_viz = True
 
         # Run analysis with patched classes to prevent actual execution
-        with patch("repd.cli.LocalRepository"), \
-                patch("repd.cli.REPDModel"):
+        with patch("repd.cli.LocalRepository"), patch("repd.cli.REPDModel"):
             run_analysis(args)
 
         # Verify directory was created
@@ -336,5 +369,5 @@ class TestCLI(unittest.TestCase):
         self.assertTrue(new_output_dir.is_dir())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -54,7 +54,7 @@ class TestRiskCalculator(unittest.TestCase):
                 "src/complex_module.py": "def complex_func():\n    if x:\n        if y:\n            if z:\n                pass",
                 "src/stable_module.py": "def stable():\n    return True",
                 "src/new_module.py": "# New module\ndef new_func():\n    pass",
-                "src/api/endpoints.py": "@app.route('/api')\ndef api():\n    pass"
+                "src/api/endpoints.py": "@app.route('/api')\ndef api():\n    pass",
             }
             return content_map.get(file_path, "")
 
@@ -68,7 +68,7 @@ class TestRiskCalculator(unittest.TestCase):
                 "src/complex_module.py": 500,
                 "src/stable_module.py": 50,
                 "src/new_module.py": 30,
-                "src/api/endpoints.py": 150
+                "src/api/endpoints.py": 150,
             }
             return size_map.get(file_path, 0)
 
@@ -83,7 +83,7 @@ class TestRiskCalculator(unittest.TestCase):
                 "src/complex_module.py": now - timedelta(days=80),
                 "src/stable_module.py": now - timedelta(days=200),
                 "src/new_module.py": now - timedelta(days=1),
-                "src/api/endpoints.py": now - timedelta(days=50)
+                "src/api/endpoints.py": now - timedelta(days=50),
             }
             return date_map.get(file_path, now)
 
@@ -99,21 +99,21 @@ class TestRiskCalculator(unittest.TestCase):
                 author="dev1",
                 date=base_date - timedelta(days=25),
                 message="Update complex module",
-                modified_files=["src/complex_module.py"]
+                modified_files=["src/complex_module.py"],
             ),
             Commit(
                 hash="def456",
                 author="dev2",
                 date=base_date - timedelta(days=20),
                 message="Fix complex module",
-                modified_files=["src/complex_module.py", "src/utils.py"]
+                modified_files=["src/complex_module.py", "src/utils.py"],
             ),
             Commit(
                 hash="ghi789",
                 author="dev1",
                 date=base_date - timedelta(days=15),
                 message="Another complex module fix",
-                modified_files=["src/complex_module.py"]
+                modified_files=["src/complex_module.py"],
             ),
             # Some changes to main.py and utils.py
             Commit(
@@ -121,7 +121,7 @@ class TestRiskCalculator(unittest.TestCase):
                 author="dev3",
                 date=base_date - timedelta(days=10),
                 message="Update main",
-                modified_files=["src/main.py", "src/utils.py"]
+                modified_files=["src/main.py", "src/utils.py"],
             ),
             # Stable module rarely changes
             Commit(
@@ -129,7 +129,7 @@ class TestRiskCalculator(unittest.TestCase):
                 author="dev2",
                 date=base_date - timedelta(days=100),
                 message="Initial stable module",
-                modified_files=["src/stable_module.py"]
+                modified_files=["src/stable_module.py"],
             ),
             # API endpoints change
             Commit(
@@ -137,7 +137,7 @@ class TestRiskCalculator(unittest.TestCase):
                 author="dev1",
                 date=base_date - timedelta(days=5),
                 message="API updates",
-                modified_files=["src/api/endpoints.py", "src/main.py"]
+                modified_files=["src/api/endpoints.py", "src/main.py"],
             ),
             # New module just added
             Commit(
@@ -145,8 +145,8 @@ class TestRiskCalculator(unittest.TestCase):
                 author="dev3",
                 date=base_date - timedelta(days=1),
                 message="Add new module",
-                modified_files=["src/new_module.py"]
-            )
+                modified_files=["src/new_module.py"],
+            ),
         ]
 
         self.mock_repo.get_commit_history.return_value = self.sample_commits
@@ -161,17 +161,21 @@ class TestRiskCalculator(unittest.TestCase):
             ("src/utils.py", 0.5),  # Medium centrality
             ("src/complex_module.py", 0.3),  # Lower centrality
             ("src/stable_module.py", 0.2),  # Lower centrality
-            ("src/new_module.py", 0.1)  # Low centrality
+            ("src/new_module.py", 0.1),  # Low centrality
         ]
         self.mock_structure_mapper.get_central_files.return_value = centrality_scores
 
         # Create the risk calculator
-        self.risk_calculator = RiskCalculator(self.mock_repo, self.mock_structure_mapper)
+        self.risk_calculator = RiskCalculator(
+            self.mock_repo, self.mock_structure_mapper
+        )
 
     def test_init(self):
         """Test calculator initialization."""
         self.assertEqual(self.risk_calculator.repository, self.mock_repo)
-        self.assertEqual(self.risk_calculator.structure_mapper, self.mock_structure_mapper)
+        self.assertEqual(
+            self.risk_calculator.structure_mapper, self.mock_structure_mapper
+        )
         self.assertEqual(self.risk_calculator.risk_scores, {})
         self.assertEqual(self.risk_calculator.risk_factors, {})
 
@@ -183,7 +187,7 @@ class TestRiskCalculator(unittest.TestCase):
             "churn": 0.25,
             "coupling": 0.2,
             "structural": 0.2,
-            "age": 0.1
+            "age": 0.1,
         }
 
         # Calculate risk scores
@@ -216,7 +220,7 @@ class TestRiskCalculator(unittest.TestCase):
         # Complex module should have higher complexity
         self.assertGreater(
             complexity_scores["src/complex_module.py"],
-            complexity_scores["src/stable_module.py"]
+            complexity_scores["src/stable_module.py"],
         )
 
     def test_churn_analysis(self):
@@ -230,36 +234,24 @@ class TestRiskCalculator(unittest.TestCase):
 
         # Complex module should have higher churn (more commits)
         self.assertGreater(
-            churn_scores["src/complex_module.py"],
-            churn_scores["src/stable_module.py"]
+            churn_scores["src/complex_module.py"], churn_scores["src/stable_module.py"]
         )
 
         # New module should have lower churn (just added)
         self.assertLess(
-            churn_scores["src/new_module.py"],
-            churn_scores["src/complex_module.py"]
+            churn_scores["src/new_module.py"], churn_scores["src/complex_module.py"]
         )
 
     def test_coupling_analysis(self):
         """Test calculation of coupling risk."""
         # Mock coupling matrix from structure mapper
         coupling_matrix = {
-            "src/main.py": {
-                "src/utils.py": 0.7,
-                "src/api/endpoints.py": 0.8
-            },
-            "src/utils.py": {
-                "src/main.py": 0.7,
-                "src/complex_module.py": 0.5
-            },
-            "src/complex_module.py": {
-                "src/utils.py": 0.5
-            },
-            "src/api/endpoints.py": {
-                "src/main.py": 0.8
-            },
+            "src/main.py": {"src/utils.py": 0.7, "src/api/endpoints.py": 0.8},
+            "src/utils.py": {"src/main.py": 0.7, "src/complex_module.py": 0.5},
+            "src/complex_module.py": {"src/utils.py": 0.5},
+            "src/api/endpoints.py": {"src/main.py": 0.8},
             "src/stable_module.py": {},
-            "src/new_module.py": {}
+            "src/new_module.py": {},
         }
 
         # Set up mock return value
@@ -274,8 +266,7 @@ class TestRiskCalculator(unittest.TestCase):
 
         # Files with more coupling should have higher scores
         self.assertGreater(
-            coupling_scores["src/main.py"],
-            coupling_scores["src/stable_module.py"]
+            coupling_scores["src/main.py"], coupling_scores["src/stable_module.py"]
         )
 
     def test_structural_analysis(self):
@@ -289,8 +280,7 @@ class TestRiskCalculator(unittest.TestCase):
 
         # Main.py should have highest structural importance
         self.assertEqual(
-            max(structural_scores.items(), key=lambda x: x[1])[0],
-            "src/main.py"
+            max(structural_scores.items(), key=lambda x: x[1])[0], "src/main.py"
         )
 
     def test_age_analysis(self):
@@ -304,8 +294,7 @@ class TestRiskCalculator(unittest.TestCase):
 
         # New module should have highest age-related risk
         self.assertEqual(
-            max(age_scores.items(), key=lambda x: x[1])[0],
-            "src/new_module.py"
+            max(age_scores.items(), key=lambda x: x[1])[0], "src/new_module.py"
         )
 
     def test_custom_weights(self):
@@ -316,7 +305,7 @@ class TestRiskCalculator(unittest.TestCase):
             "churn": 0.25,
             "coupling": 0.2,
             "structural": 0.2,
-            "age": 0.1
+            "age": 0.1,
         }
 
         # Calculate with standard weights
@@ -330,7 +319,7 @@ class TestRiskCalculator(unittest.TestCase):
             "churn": 0.1,
             "coupling": 0.1,
             "structural": 0.1,
-            "age": 0.1
+            "age": 0.1,
         }
 
         self.risk_calculator.calculate_risk_scores(weights=complexity_weights)
@@ -403,26 +392,20 @@ class TestRiskCalculator(unittest.TestCase):
 
             # Verify data was imported correctly
             self.assertEqual(
-                len(new_calculator.risk_scores),
-                len(self.risk_calculator.risk_scores)
+                len(new_calculator.risk_scores), len(self.risk_calculator.risk_scores)
             )
 
             # Check specific scores
             for file in self.sample_files:
                 self.assertAlmostEqual(
                     new_calculator.risk_scores.get(file, 0),
-                    self.risk_calculator.risk_scores.get(file, 0)
+                    self.risk_calculator.risk_scores.get(file, 0),
                 )
 
     def test_normalize_scores(self):
         """Test score normalization function."""
         # Create some test scores
-        raw_scores = {
-            "file1": 100,
-            "file2": 50,
-            "file3": 0,
-            "file4": 200
-        }
+        raw_scores = {"file1": 100, "file2": 50, "file3": 0, "file4": 200}
 
         # Normalize scores
         normalized = self.risk_calculator._normalize_scores(raw_scores)
@@ -455,8 +438,7 @@ class TestRiskCalculator(unittest.TestCase):
 
         # Classify files
         classification = self.risk_calculator.classify_risk(
-            high_threshold=0.7,
-            medium_threshold=0.4
+            high_threshold=0.7, medium_threshold=0.4
         )
 
         # Should have three categories
@@ -466,12 +448,12 @@ class TestRiskCalculator(unittest.TestCase):
 
         # All files should be classified
         total_files = (
-                len(classification["high_risk"]) +
-                len(classification["medium_risk"]) +
-                len(classification["low_risk"])
+            len(classification["high_risk"])
+            + len(classification["medium_risk"])
+            + len(classification["low_risk"])
         )
         self.assertEqual(total_files, len(self.sample_files))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

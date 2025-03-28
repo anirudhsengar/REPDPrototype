@@ -209,7 +209,8 @@ class EntryPointIdentifier:
 
             # Calculate final score weighted by importance
             final_score = self._calculate_weighted_score(
-                pattern_score, content_score, reference_score, weight_factor)
+                pattern_score, content_score, reference_score, weight_factor
+            )
 
             # If final score meets threshold, add to entry points
             if final_score > 0.1:  # Minimum threshold
@@ -313,7 +314,7 @@ class EntryPointIdentifier:
 
         # Adjust based on file size
         size_factor = min(1.0, len(content) / (50 * 1024))  # 50KB cap
-        content_score *= (0.7 + 0.3 * size_factor)
+        content_score *= 0.7 + 0.3 * size_factor
 
         return min(content_score, 1.0)
 
@@ -339,9 +340,21 @@ class EntryPointIdentifier:
 
         # Score based on common names that are often imported
         common_imported_names = [
-            "util", "utils", "helper", "common", "core",
-            "base", "api", "client", "server", "index",
-            "constants", "config", "types", "model", "shared"
+            "util",
+            "utils",
+            "helper",
+            "common",
+            "core",
+            "base",
+            "api",
+            "client",
+            "server",
+            "index",
+            "constants",
+            "config",
+            "types",
+            "model",
+            "shared",
         ]
 
         # Check if the base name is one of the commonly imported names
@@ -367,11 +380,11 @@ class EntryPointIdentifier:
         return min(reference_score, 1.0)
 
     def _calculate_weighted_score(
-            self,
-            pattern_score: float,
-            content_score: float,
-            reference_score: float,
-            weight_factor: float
+        self,
+        pattern_score: float,
+        content_score: float,
+        reference_score: float,
+        weight_factor: float,
     ) -> float:
         """
         Calculate weighted entry point score.
@@ -387,9 +400,7 @@ class EntryPointIdentifier:
         """
         # Apply weights to each score component
         weighted_score = (
-                0.4 * pattern_score +
-                0.4 * content_score +
-                0.2 * reference_score
+            0.4 * pattern_score + 0.4 * content_score + 0.2 * reference_score
         )
 
         # Apply overall weight factor
@@ -484,5 +495,7 @@ if __name__ == "__main__":
 
     # Print top entry points
     print("\nTop 10 entry points:")
-    for file, score in sorted(entry_points.items(), key=lambda x: x[1], reverse=True)[:10]:
+    for file, score in sorted(entry_points.items(), key=lambda x: x[1], reverse=True)[
+        :10
+    ]:
         print(f"{file}: {score:.4f}")

@@ -21,10 +21,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Configure logging for tests
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 
 # Suppress excessive logging during tests
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('PIL').setLevel(logging.WARNING)
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)

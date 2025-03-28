@@ -34,11 +34,11 @@ class ChangeCouplingAnalyzer:
     """
 
     def __init__(
-            self,
-            repository: Repository,
-            coupling_threshold: float = 0.3,
-            min_change_count: int = 5,
-            max_files_per_commit: int = 100,
+        self,
+        repository: Repository,
+        coupling_threshold: float = 0.3,
+        min_change_count: int = 5,
+        max_files_per_commit: int = 100,
     ):
         """
         Initialize the change coupling analyzer.
@@ -56,13 +56,13 @@ class ChangeCouplingAnalyzer:
 
         # Internal data structures
         self.file_changes: DefaultDict[str, int] = defaultdict(int)
-        self.co_changes: DefaultDict[str, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self.co_changes: DefaultDict[str, DefaultDict[str, int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
         self.coupling_matrix: Dict[str, Dict[str, float]] = {}
 
     def analyze_coupling(
-            self,
-            lookback: int = 1000,
-            branch: str = "HEAD"
+        self, lookback: int = 1000, branch: str = "HEAD"
     ) -> Dict[str, Dict[str, float]]:
         """
         Analyze change coupling patterns in the repository.
@@ -75,7 +75,9 @@ class ChangeCouplingAnalyzer:
             Dictionary mapping filenames to dictionaries of coupled files and scores
         """
         start_time = time.time()
-        logger.info(f"Analyzing change coupling patterns (lookback: {lookback} commits)")
+        logger.info(
+            f"Analyzing change coupling patterns (lookback: {lookback} commits)"
+        )
 
         # Analyze commits to build co-change matrix
         commits = self._extract_commits_for_analysis(lookback, branch)
@@ -94,13 +96,19 @@ class ChangeCouplingAnalyzer:
         logger.info(f"Change coupling analysis completed in {elapsed:.2f} seconds")
 
         # Total number of significant couplings found
-        total_couplings = sum(len(couplings) for couplings in self.coupling_matrix.values())
-        logger.info(f"Identified {total_couplings} significant change couplings "
-                    f"among {len(self.coupling_matrix)} files")
+        total_couplings = sum(
+            len(couplings) for couplings in self.coupling_matrix.values()
+        )
+        logger.info(
+            f"Identified {total_couplings} significant change couplings "
+            f"among {len(self.coupling_matrix)} files"
+        )
 
         return self.coupling_matrix
 
-    def get_top_coupled_files(self, filename: str, limit: int = 5) -> List[Tuple[str, float]]:
+    def get_top_coupled_files(
+        self, filename: str, limit: int = 5
+    ) -> List[Tuple[str, float]]:
         """
         Get the top files coupled with the given file.
 
@@ -127,14 +135,13 @@ class ChangeCouplingAnalyzer:
         Returns:
             List of (filename, num_couplings) tuples for most coupled files
         """
-        file_coupling_counts = [(file, len(couplings))
-                                for file, couplings in self.coupling_matrix.items()]
+        file_coupling_counts = [
+            (file, len(couplings)) for file, couplings in self.coupling_matrix.items()
+        ]
         return sorted(file_coupling_counts, key=lambda x: x[1], reverse=True)[:limit]
 
     def _extract_commits_for_analysis(
-            self,
-            lookback: int,
-            branch: str
+        self, lookback: int, branch: str
     ) -> List[Dict[str, Any]]:
         """
         Extract relevant commits for analysis.
@@ -168,7 +175,9 @@ class ChangeCouplingAnalyzer:
 
             filtered_commits.append(commit)
 
-        logger.debug(f"Using {len(filtered_commits)} commits for analysis after filtering")
+        logger.debug(
+            f"Using {len(filtered_commits)} commits for analysis after filtering"
+        )
         return filtered_commits
 
     def _build_co_change_matrix(self, commits: List[Dict[str, Any]]) -> None:
@@ -194,20 +203,25 @@ class ChangeCouplingAnalyzer:
 
             # Update co-change counts for each pair of files
             for i, file1 in enumerate(files):
-                for file2 in files[i + 1:]:
+                for file2 in files[i + 1 :]:
                     if file1 != file2:
                         self.co_changes[file1][file2] += 1
                         self.co_changes[file2][file1] += 1
 
-        logger.debug(f"Processed {len(self.file_changes)} unique files in co-change matrix")
+        logger.debug(
+            f"Processed {len(self.file_changes)} unique files in co-change matrix"
+        )
 
     def _filter_low_frequency_files(self) -> None:
         """
         Filter out files with too few changes from the co-change matrix.
         """
         # Find files with enough changes
-        valid_files = {file for file, count in self.file_changes.items()
-                       if count >= self.min_change_count}
+        valid_files = {
+            file
+            for file, count in self.file_changes.items()
+            if count >= self.min_change_count
+        }
 
         # Filter out low frequency files from co-changes
         filtered_co_changes = defaultdict(lambda: defaultdict(int))
@@ -225,8 +239,10 @@ class ChangeCouplingAnalyzer:
         # Log the filtering results
         original_count = len(self.file_changes)
         filtered_count = len(valid_files)
-        logger.debug(f"Filtered out {original_count - filtered_count} files with < "
-                     f"{self.min_change_count} changes, keeping {filtered_count} files")
+        logger.debug(
+            f"Filtered out {original_count - filtered_count} files with < "
+            f"{self.min_change_count} changes, keeping {filtered_count} files"
+        )
 
     def _compute_coupling_scores(self) -> Dict[str, Dict[str, float]]:
         """
@@ -275,14 +291,16 @@ class ChangeCouplingAnalyzer:
         self.coupling_matrix = filtered_matrix
 
         # Count the number of couplings
-        total_couplings = sum(len(couplings) for couplings in self.coupling_matrix.values())
-        logger.debug(f"After filtering by threshold {self.coupling_threshold}, "
-                     f"kept {total_couplings} couplings")
+        total_couplings = sum(
+            len(couplings) for couplings in self.coupling_matrix.values()
+        )
+        logger.debug(
+            f"After filtering by threshold {self.coupling_threshold}, "
+            f"kept {total_couplings} couplings"
+        )
 
     def visualize_coupling_network(
-            self,
-            output_file: str = "coupling_network.png",
-            top_n_files: int = 30
+        self, output_file: str = "coupling_network.png", top_n_files: int = 30
     ) -> None:
         """
         Visualize the change coupling network.
@@ -303,7 +321,9 @@ class ChangeCouplingAnalyzer:
             for file, couplings in self.coupling_matrix.items():
                 file_total_scores[file] = sum(couplings.values())
 
-            top_files = sorted(file_total_scores.items(), key=lambda x: x[1], reverse=True)[:top_n_files]
+            top_files = sorted(
+                file_total_scores.items(), key=lambda x: x[1], reverse=True
+            )[:top_n_files]
             top_file_names = {file for file, _ in top_files}
 
             # Add nodes and edges for top files
@@ -319,10 +339,10 @@ class ChangeCouplingAnalyzer:
             plt.figure(figsize=(12, 10))
 
             # Calculate node sizing based on coupling degree
-            sizes = [100 + 200 * G.degree(node, weight='weight') for node in G.nodes()]
+            sizes = [100 + 200 * G.degree(node, weight="weight") for node in G.nodes()]
 
             # Calculate edge thickness based on weight
-            edge_weights = [G[u][v]['weight'] * 2 for u, v in G.edges()]
+            edge_weights = [G[u][v]["weight"] * 2 for u, v in G.edges()]
 
             # Create layout
             pos = nx.spring_layout(G, k=0.2, iterations=50)
@@ -332,27 +352,29 @@ class ChangeCouplingAnalyzer:
                 G,
                 pos=pos,
                 node_size=sizes,
-                node_color='skyblue',
+                node_color="skyblue",
                 font_size=8,
                 width=edge_weights,
-                edge_color='gray',
+                edge_color="gray",
                 alpha=0.8,
                 with_labels=True,
-                font_weight='bold'
+                font_weight="bold",
             )
 
-            plt.title('Change Coupling Network', fontsize=16)
-            plt.axis('off')
+            plt.title("Change Coupling Network", fontsize=16)
+            plt.axis("off")
 
             # Save figure
             plt.tight_layout()
-            plt.savefig(output_file, dpi=300, bbox_inches='tight')
+            plt.savefig(output_file, dpi=300, bbox_inches="tight")
             plt.close()
 
             logger.info(f"Coupling network visualization saved to {output_file}")
 
         except ImportError:
-            logger.warning("Could not create visualization. Required packages: matplotlib, networkx")
+            logger.warning(
+                "Could not create visualization. Required packages: matplotlib, networkx"
+            )
 
 
 if __name__ == "__main__":

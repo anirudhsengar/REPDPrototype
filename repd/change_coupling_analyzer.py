@@ -47,9 +47,13 @@ class ChangeCouplingAnalyzer:
         self.file_changes = None  # Count of changes per file
         self.commit_count = 0  # Total number of commits analyzed
 
-    def analyze_coupling(self, days: int = None, normalize: bool = True,
-                         temporal_decay: float = None,
-                         file_extensions: List[str] = None) -> Dict[str, Dict[str, float]]:
+    def analyze_coupling(
+        self,
+        days: int = None,
+        normalize: bool = True,
+        temporal_decay: float = None,
+        file_extensions: List[str] = None,
+    ) -> Dict[str, Dict[str, float]]:
         """
         Analyze change coupling in the repository.
 
@@ -90,12 +94,17 @@ class ChangeCouplingAnalyzer:
 
             # Filter by extension if specified
             if file_extensions:
-                modified_files = [f for f in modified_files
-                                  if any(f.endswith(ext) for ext in file_extensions)]
+                modified_files = [
+                    f
+                    for f in modified_files
+                    if any(f.endswith(ext) for ext in file_extensions)
+                ]
 
             # Skip commits with too many files (likely large refactorings)
             if len(modified_files) > 20:
-                logger.debug(f"Skipping commit {commit.hash} with {len(modified_files)} files")
+                logger.debug(
+                    f"Skipping commit {commit.hash} with {len(modified_files)} files"
+                )
                 continue
 
             # Skip commits with only one file (no coupling)
@@ -107,11 +116,11 @@ class ChangeCouplingAnalyzer:
 
             # Calculate commit weight if using temporal decay
             weight = 1.0
-            if temporal_decay is not None and hasattr(commit, 'date'):
+            if temporal_decay is not None and hasattr(commit, "date"):
                 # Calculate days since commit
                 if isinstance(commit.date, datetime):
                     days_since = (current_date - commit.date).days
-                    weight = temporal_decay ** days_since
+                    weight = temporal_decay**days_since
 
             # Update file change counts
             for file in modified_files:
@@ -119,7 +128,7 @@ class ChangeCouplingAnalyzer:
 
             # Update co-change counts for all file pairs in this commit
             for i, file1 in enumerate(modified_files):
-                for file2 in modified_files[i + 1:]:
+                for file2 in modified_files[i + 1 :]:
                     if file1 == file2:
                         continue
                     file_co_changes[file1][file2] += weight
@@ -150,8 +159,10 @@ class ChangeCouplingAnalyzer:
         # Create a graph representation
         self._create_coupling_graph()
 
-        logger.info(f"Analyzed change coupling for {len(file_changes)} files, "
-                    f"found {sum(len(v) for v in coupling_matrix.values())} coupling relationships")
+        logger.info(
+            f"Analyzed change coupling for {len(file_changes)} files, "
+            f"found {sum(len(v) for v in coupling_matrix.values())} coupling relationships"
+        )
 
         return coupling_matrix
 
@@ -174,7 +185,9 @@ class ChangeCouplingAnalyzer:
 
         return self.coupling_matrix[file1].get(file2, 0.0)
 
-    def get_coupled_files(self, file_path: str, min_score: float = 0.3) -> Dict[str, float]:
+    def get_coupled_files(
+        self, file_path: str, min_score: float = 0.3
+    ) -> Dict[str, float]:
         """
         Get files coupled with a specific file.
 
@@ -188,11 +201,15 @@ class ChangeCouplingAnalyzer:
         if not self.coupling_matrix or file_path not in self.coupling_matrix:
             return {}
 
-        return {f: score for f, score in self.coupling_matrix[file_path].items()
-                if score >= min_score}
+        return {
+            f: score
+            for f, score in self.coupling_matrix[file_path].items()
+            if score >= min_score
+        }
 
-    def get_coupled_clusters(self, min_coupling: float = 0.3,
-                             min_cluster_size: int = 2) -> List[Set[str]]:
+    def get_coupled_clusters(
+        self, min_coupling: float = 0.3, min_cluster_size: int = 2
+    ) -> List[Set[str]]:
         """
         Identify clusters of coupled files.
 
@@ -209,8 +226,8 @@ class ChangeCouplingAnalyzer:
         # Create a copy of the graph with only edges above threshold
         g = nx.Graph()
         for u, v, data in self.coupling_graph.edges(data=True):
-            if data['weight'] >= min_coupling:
-                g.add_edge(u, v, weight=data['weight'])
+            if data["weight"] >= min_coupling:
+                g.add_edge(u, v, weight=data["weight"])
 
         # Extract connected components - these are the clusters
         clusters = list(nx.connected_components(g))
@@ -232,7 +249,9 @@ class ChangeCouplingAnalyzer:
         """
         return self.coupling_matrix or {}
 
-    def get_high_coupling_pairs(self, threshold: float = 0.7) -> List[Tuple[str, str, float]]:
+    def get_high_coupling_pairs(
+        self, threshold: float = 0.7
+    ) -> List[Tuple[str, str, float]]:
         """
         Get file pairs with coupling above a threshold.
 
@@ -291,12 +310,12 @@ class ChangeCouplingAnalyzer:
                 ],
                 "coupled_clusters": [
                     list(cluster) for cluster in self.get_coupled_clusters()[:5]
-                ]
-            }
+                ],
+            },
         }
 
         # Write to file
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Exported coupling data to {output_file}")
@@ -346,15 +365,19 @@ class ChangeCouplingAnalyzer:
 
         try:
             # Calculate eigenvector centrality (importance based on connections)
-            centrality = nx.eigenvector_centrality_numpy(self.coupling_graph, weight='weight')
+            centrality = nx.eigenvector_centrality_numpy(
+                self.coupling_graph, weight="weight"
+            )
         except:
             try:
                 # Fall back to degree centrality if eigenvector fails
                 centrality = nx.degree_centrality(self.coupling_graph)
             except:
                 # If all else fails, use a simple count of connections
-                centrality = {node: len(list(self.coupling_graph.neighbors(node))) /
-                                    (self.coupling_graph.number_of_nodes() - 1)
-                              for node in self.coupling_graph.nodes()}
+                centrality = {
+                    node: len(list(self.coupling_graph.neighbors(node)))
+                    / (self.coupling_graph.number_of_nodes() - 1)
+                    for node in self.coupling_graph.nodes()
+                }
 
         return centrality

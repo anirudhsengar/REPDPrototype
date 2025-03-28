@@ -44,9 +44,12 @@ class EntryPointDetector:
         self.structure_mapper = structure_mapper
         self.entry_points = {}  # Dictionary mapping file paths to entry point scores
 
-    def detect_entry_points(self, use_dependencies: bool = True,
-                            pattern_weight: float = 0.6,
-                            dependency_weight: float = 0.4) -> Dict[str, float]:
+    def detect_entry_points(
+        self,
+        use_dependencies: bool = True,
+        pattern_weight: float = 0.6,
+        dependency_weight: float = 0.4,
+    ) -> Dict[str, float]:
         """
         Detect entry points in the repository.
 
@@ -67,7 +70,11 @@ class EntryPointDetector:
 
         # Dependency-based detection if enabled
         dependency_scores = {}
-        if use_dependencies and self.structure_mapper and self.structure_mapper.dependency_graph:
+        if (
+            use_dependencies
+            and self.structure_mapper
+            and self.structure_mapper.dependency_graph
+        ):
             dependency_scores = self._detect_by_dependencies()
 
             # Combine the scores
@@ -75,13 +82,15 @@ class EntryPointDetector:
                 pattern_scores,
                 dependency_scores,
                 pattern_weight=pattern_weight,
-                dependency_weight=dependency_weight
+                dependency_weight=dependency_weight,
             )
         else:
             self.entry_points = pattern_scores
 
-        logger.info(f"Detected {len([s for s in self.entry_points.values() if s > 0.5])} "
-                    f"likely entry points out of {len(self.entry_points)} files analyzed")
+        logger.info(
+            f"Detected {len([s for s in self.entry_points.values() if s > 0.5])} "
+            f"likely entry points out of {len(self.entry_points)} files analyzed"
+        )
 
         return self.entry_points
 
@@ -95,8 +104,11 @@ class EntryPointDetector:
         Returns:
             Dictionary mapping file paths to entry point scores
         """
-        return {file: score for file, score in self.entry_points.items()
-                if score >= min_score}
+        return {
+            file: score
+            for file, score in self.entry_points.items()
+            if score >= min_score
+        }
 
     def get_top_entry_points(self, n: int = 10) -> List[Tuple[str, float]]:
         """
@@ -108,11 +120,7 @@ class EntryPointDetector:
         Returns:
             List of (file_path, score) tuples, sorted by score (descending)
         """
-        return sorted(
-            self.entry_points.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:n]
+        return sorted(self.entry_points.items(), key=lambda x: x[1], reverse=True)[:n]
 
     def export_entry_points(self, output_file: str) -> None:
         """
@@ -128,11 +136,11 @@ class EntryPointDetector:
                 "top_entry_points": [
                     {"file": file, "score": score}
                     for file, score in self.get_top_entry_points()
-                ]
-            }
+                ],
+            },
         }
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Exported entry point data to {output_file}")
@@ -144,8 +152,11 @@ class EntryPointDetector:
         logger.debug("Scanning files for entry point signatures")
 
         # Get all code files
-        files = [f for f in self.repository.get_all_files()
-                 if self.repository.is_code_file(f)]
+        files = [
+            f
+            for f in self.repository.get_all_files()
+            if self.repository.is_code_file(f)
+        ]
 
         # Dictionary to track entry point scores from pattern matching
         pattern_scores = {}
@@ -176,19 +187,19 @@ class EntryPointDetector:
         filename_score = self._score_by_filename(os.path.basename(file_path))
 
         # Language-specific pattern detection
-        if file_path.endswith('.py'):
+        if file_path.endswith(".py"):
             pattern_score = self._analyze_python_file(content)
-        elif file_path.endswith(('.js', '.ts', '.jsx', '.tsx')):
+        elif file_path.endswith((".js", ".ts", ".jsx", ".tsx")):
             pattern_score = self._analyze_js_file(content)
-        elif file_path.endswith(('.java')):
+        elif file_path.endswith((".java")):
             pattern_score = self._analyze_java_file(content)
-        elif file_path.endswith(('.go')):
+        elif file_path.endswith((".go")):
             pattern_score = self._analyze_go_file(content)
-        elif file_path.endswith(('.rb')):
+        elif file_path.endswith((".rb")):
             pattern_score = self._analyze_ruby_file(content)
-        elif file_path.endswith(('.php')):
+        elif file_path.endswith((".php")):
             pattern_score = self._analyze_php_file(content)
-        elif file_path.endswith(('.c', '.cpp', '.cc')):
+        elif file_path.endswith((".c", ".cpp", ".cc")):
             pattern_score = self._analyze_cpp_file(content)
         else:
             pattern_score = 0.0
@@ -213,9 +224,21 @@ class EntryPointDetector:
 
         # High-confidence entry point file names
         high_confidence = [
-            'main.py', 'main.js', 'main.java', 'main.go', 'app.py', 'app.js',
-            'server.py', 'server.js', 'index.js', 'index.php', 'cli.py',
-            'run.py', 'start.py', 'api.py', 'application.java'
+            "main.py",
+            "main.js",
+            "main.java",
+            "main.go",
+            "app.py",
+            "app.js",
+            "server.py",
+            "server.js",
+            "index.js",
+            "index.php",
+            "cli.py",
+            "run.py",
+            "start.py",
+            "api.py",
+            "application.java",
         ]
 
         if filename in high_confidence:
@@ -223,13 +246,13 @@ class EntryPointDetector:
 
         # Medium-confidence patterns
         medium_patterns = [
-            r'^main\..*$',
-            r'^app\..*$',
-            r'^index\..*$',
-            r'^server\..*$',
-            r'^start\..*$',
-            r'^run\..*$',
-            r'^cli\..*$'
+            r"^main\..*$",
+            r"^app\..*$",
+            r"^index\..*$",
+            r"^server\..*$",
+            r"^start\..*$",
+            r"^run\..*$",
+            r"^cli\..*$",
         ]
 
         for pattern in medium_patterns:
@@ -238,13 +261,13 @@ class EntryPointDetector:
 
         # Low-confidence patterns
         low_patterns = [
-            r'^.*service\..*$',
-            r'^.*controller\..*$',
-            r'^.*handler\..*$',
-            r'^.*endpoint\..*$',
-            r'^.*application\..*$',
-            r'^.*launcher\..*$',
-            r'^.*bootstrap\..*$'
+            r"^.*service\..*$",
+            r"^.*controller\..*$",
+            r"^.*handler\..*$",
+            r"^.*endpoint\..*$",
+            r"^.*application\..*$",
+            r"^.*launcher\..*$",
+            r"^.*bootstrap\..*$",
         ]
 
         for pattern in low_patterns:
@@ -270,23 +293,26 @@ class EntryPointDetector:
             score += 0.9
 
         # Check for Flask/FastAPI app
-        if re.search(r'app\s*=\s*(?:Flask|FastAPI)', content):
+        if re.search(r"app\s*=\s*(?:Flask|FastAPI)", content):
             score += 0.8
 
         # Check for route definitions
-        if re.search(r'@.*\.route', content):
+        if re.search(r"@.*\.route", content):
             score += 0.7
 
         # Check for click/argparse - CLI apps
-        if re.search(r'(?:import\s+click|from\s+click\s+import|import\s+argparse|from\s+argparse\s+import)', content):
+        if re.search(
+            r"(?:import\s+click|from\s+click\s+import|import\s+argparse|from\s+argparse\s+import)",
+            content,
+        ):
             score += 0.5
 
         # Check for Django management commands
-        if re.search(r'from\s+django\.core\.management', content):
+        if re.search(r"from\s+django\.core\.management", content):
             score += 0.7
 
         # Check for setup.py entry points
-        if re.search(r'entry_points\s*=', content):
+        if re.search(r"entry_points\s*=", content):
             score += 0.6
 
         return min(1.0, score)
@@ -304,19 +330,19 @@ class EntryPointDetector:
         score = 0.0
 
         # Check for Express app
-        if re.search(r'(?:const|let|var)\s+app\s*=\s*express\(\)', content):
+        if re.search(r"(?:const|let|var)\s+app\s*=\s*express\(\)", content):
             score += 0.8
 
         # Check for app.listen pattern (server start)
-        if re.search(r'(?:app|server)\.listen', content):
+        if re.search(r"(?:app|server)\.listen", content):
             score += 0.7
 
         # Check for React index file
-        if re.search(r'ReactDOM\.render', content):
+        if re.search(r"ReactDOM\.render", content):
             score += 0.7
 
         # Check for route definitions
-        if re.search(r'app\.(get|post|put|delete|patch)', content):
+        if re.search(r"app\.(get|post|put|delete|patch)", content):
             score += 0.6
 
         # Check for commander/yargs (CLI)
@@ -324,7 +350,7 @@ class EntryPointDetector:
             score += 0.5
 
         # Check for exports = module.exports
-        if not re.search(r'(?:exports|module\.exports)\s*=', content):
+        if not re.search(r"(?:exports|module\.exports)\s*=", content):
             # If it doesn't export anything, more likely to be an entry point
             score += 0.3
 
@@ -343,19 +369,19 @@ class EntryPointDetector:
         score = 0.0
 
         # Check for main method
-        if re.search(r'public\s+static\s+void\s+main\s*\(\s*String', content):
+        if re.search(r"public\s+static\s+void\s+main\s*\(\s*String", content):
             score += 0.9
 
         # Check for Spring Boot application
-        if re.search(r'@SpringBootApplication', content):
+        if re.search(r"@SpringBootApplication", content):
             score += 0.8
 
         # Check for REST controllers
-        if re.search(r'@(?:Rest)?Controller', content):
+        if re.search(r"@(?:Rest)?Controller", content):
             score += 0.7
 
         # Check for servlet
-        if re.search(r'extends\s+(?:Http)?Servlet', content):
+        if re.search(r"extends\s+(?:Http)?Servlet", content):
             score += 0.6
 
         return min(1.0, score)
@@ -373,19 +399,19 @@ class EntryPointDetector:
         score = 0.0
 
         # Check for main package
-        if re.search(r'package\s+main', content):
+        if re.search(r"package\s+main", content):
             score += 0.5
 
         # Check for main function
-        if re.search(r'func\s+main\s*\(\s*\)', content):
+        if re.search(r"func\s+main\s*\(\s*\)", content):
             score += 0.9
 
         # Check for HTTP handlers
-        if re.search(r'func\s+\w+\s*\(\s*\w+\s+[*]?http\.ResponseWriter', content):
+        if re.search(r"func\s+\w+\s*\(\s*\w+\s+[*]?http\.ResponseWriter", content):
             score += 0.7
 
         # Check for Gin/Echo/other web framework routes
-        if re.search(r'\.\s*(?:GET|POST|PUT|DELETE|Handle)\s*\(', content):
+        if re.search(r"\.\s*(?:GET|POST|PUT|DELETE|Handle)\s*\(", content):
             score += 0.6
 
         return min(1.0, score)
@@ -403,15 +429,17 @@ class EntryPointDetector:
         score = 0.0
 
         # Check for shebang line
-        if content.startswith('#!/'):
+        if content.startswith("#!/"):
             score += 0.7
 
         # Check for Sinatra/Rails patterns
-        if re.search(r'class\s+\w+\s*<\s*(?:Sinatra::Base|Rails::Application)', content):
+        if re.search(
+            r"class\s+\w+\s*<\s*(?:Sinatra::Base|Rails::Application)", content
+        ):
             score += 0.8
 
         # Check for command-line execution
-        if re.search(r'if\s+__FILE__\s*==\s*\$0', content):
+        if re.search(r"if\s+__FILE__\s*==\s*\$0", content):
             score += 0.9
 
         # Check for route definitions
@@ -437,19 +465,19 @@ class EntryPointDetector:
         score = 0.0
 
         # Check if file starts with <?php
-        if content.startswith('<?php'):
+        if content.startswith("<?php"):
             score += 0.3
 
         # Check if it's a controller
-        if re.search(r'class\s+\w+Controller', content):
+        if re.search(r"class\s+\w+Controller", content):
             score += 0.7
 
         # Check for route definitions
-        if re.search(r'Route::(get|post|put|delete|patch)', content):
+        if re.search(r"Route::(get|post|put|delete|patch)", content):
             score += 0.6
 
         # Check if it extends a framework class
-        if re.search(r'extends\s+(?:Controller|Command|Console)', content):
+        if re.search(r"extends\s+(?:Controller|Command|Console)", content):
             score += 0.5
 
         return min(1.0, score)
@@ -467,7 +495,7 @@ class EntryPointDetector:
         score = 0.0
 
         # Check for main function
-        if re.search(r'int\s+main\s*\(', content):
+        if re.search(r"int\s+main\s*\(", content):
             score += 0.9
 
         return min(1.0, score)
@@ -516,10 +544,13 @@ class EntryPointDetector:
 
         return dependency_scores
 
-    def _combine_scores(self, pattern_scores: Dict[str, float],
-                        dependency_scores: Dict[str, float],
-                        pattern_weight: float = 0.6,
-                        dependency_weight: float = 0.4) -> Dict[str, float]:
+    def _combine_scores(
+        self,
+        pattern_scores: Dict[str, float],
+        dependency_scores: Dict[str, float],
+        pattern_weight: float = 0.6,
+        dependency_weight: float = 0.4,
+    ) -> Dict[str, float]:
         """
         Combine scores from different detection methods.
 
@@ -547,6 +578,8 @@ class EntryPointDetector:
             d_score = dependency_scores.get(file, 0)
 
             # Weighted combination
-            combined_scores[file] = (p_score * pattern_weight) + (d_score * dependency_weight)
+            combined_scores[file] = (p_score * pattern_weight) + (
+                d_score * dependency_weight
+            )
 
         return combined_scores
